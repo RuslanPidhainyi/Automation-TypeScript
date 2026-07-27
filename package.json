@@ -1,0 +1,20 @@
+{
+  "name": "automation-typescript",
+  "version": "1.0.0",
+  "description": "UI/API test automation framework using Playwright and TypeScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report"
+  },
+  "keywords": ["playwright", "typescript", "automation", "e2e", "testing"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "1.61.0",
+    "@types/node": "^18.19.130"
+  }
+}
