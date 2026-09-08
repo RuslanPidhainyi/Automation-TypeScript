@@ -4,17 +4,29 @@
   "description": "UI/API test automation framework using Playwright and TypeScript",
   "main": "index.js",
   "scripts": {
-    "test": "playwright test",
-    "test:headed": "playwright test --headed",
+    "test": "node scripts/run-tests.js",
+    "test:health": "node scripts/run-tests.js --project=health",
+    "test:smoke": "node scripts/run-tests.js --project=smoke",
+    "test:regression": "node scripts/run-tests.js --project=regression-chromium --project=regression-firefox --project=regression-webkit",
+    "test:headed": "node scripts/run-tests.js --headed",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
+    "typecheck": "tsc --noEmit",
     "report": "playwright show-report"
   },
-  "keywords": ["playwright", "typescript", "automation", "e2e", "testing"],
+  "keywords": [
+    "playwright",
+    "typescript",
+    "automation",
+    "e2e",
+    "testing"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "1.61.0",
-    "@types/node": "^18.19.130"
+    "@types/node": "^18.19.130",
+    "dotenv": "^17.4.2",
+    "typescript": "^5.9.3"
   }
 }
