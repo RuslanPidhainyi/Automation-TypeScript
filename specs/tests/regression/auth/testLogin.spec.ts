@@ -6,7 +6,7 @@ import { expect, idTag, LAYER_TAG, MUTATION_TAG, test, TEST_USER_2 } from '../..
  * Regression layer - the login card and its two guards
  * (`redirectAuthenticatedGuard`, and the nav-bar login form it shares markup
  * with). The happy path itself (test_user_2 signs in from the card) is already
- * covered at the smoke layer (`specs/tests/smoke/test_Auth.spec.ts`); this
+ * covered at the smoke layer (`specs/tests/smoke/testAuth.spec.ts`); this
  * file only adds the negative/edge cases from the coverage plan.
  */
 test.describe(

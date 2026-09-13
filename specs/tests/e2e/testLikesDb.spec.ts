@@ -7,13 +7,13 @@ import { expect, idTag, LAYER_TAG, MUTATION_TAG, signInThroughUi, test, TEST_USE
 /**
  * e2e layer - `dbo.Likes` has a composite primary key `(AppUserId, PostId)`,
  * no surrogate `Id` at all (`AppDbContext.OnModelCreating`). No API response
- * exposes that row shape directly - `regression/likes-and-lists/test_Likes.spec.ts`
+ * exposes that row shape directly - `regression/likes-and-lists/testLikes.spec.ts`
  * `[ID: 62]` already proves the UI round trip; this file proves the exact row
  * the UI action is supposed to produce actually exists (and is actually gone
  * again) in the table itself.
  *
  * Likes and unlikes the same post inside the test, leaving no trace, so
- * `@unmutation` - same reasoning `test_Likes.spec.ts` already documents for
+ * `@unmutation` - same reasoning `testLikes.spec.ts` already documents for
  * the identical pattern.
  *
  *   [Step 1][API] pick a post test_user_4 may like, with a unique title

@@ -20,7 +20,7 @@ import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, test } from '../../..
  * `[ID: 59]` is running, and its restore would then overwrite `[ID: 59]`'s own
  * correct restore with that stale snapshot. Serial mode is the fix - it also
  * protects `[ID: 60]`'s own multi-step Cloudinary sequence, for the same reason
- * as `test_Roles.spec.ts`.
+ * as `testRoles.spec.ts`.
  *
  * A photo is "main" exactly when its Main button is disabled - the template
  * binds both `[disabled]` and the `btn-active` class to `photo.isMain`.

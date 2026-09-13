@@ -59,7 +59,7 @@ UI's side) but specifically "is what the UI just did actually committed to the d
 | Page-object layer | ✅ **Complete** — 15 files under `src/PageObjects/` (renamed from `src/Pages/`), 14/14 routes, documented in `RulesForDescribingAPage.md` |
 | `specs/support/` | ✅ `env.ts` (URLs, credentials, `MEMBER`/`ADMIN`, `TEST_USER_1..5`, `AUTH_STRATEGY`, `FIXTURES`), `ApiClient.ts`, `auth.ts` + `auth.setup.ts`, `signIn.ts`, `index.ts` barrel |
 | `specs/fixtures/` | ✅ `travel-photo.jpg` (800×600, ~25 kB, generated) + `README.md` |
-| `specs/tests/healthCheck/` | ✅ **`test_Api.spec.ts` + `test_App.spec.ts` + `test_Auth.spec.ts` — 23 checks in 3 files** |
+| `specs/tests/healthCheck/` | ✅ **`testApi.spec.ts` + `testApp.spec.ts` + `testAuth.spec.ts` — 23 checks in 3 files** |
 | `specs/tests/smoke/` | ✅ **Complete** — 8 files, 11 checks (`[ID: 23]`–`[ID: 33]`), all green on chromium in ~20 s |
 | `specs/tests/regression/` | ✅ **Complete** — 7 domain folders, 11 files, 39 checks (`[ID: 34]`–`[ID: 72]`), all green on chromium |
 | `specs/tests/e2e/` | ✅ **4 files, 4 checks (`[ID: 73]`–`[ID: 76]`)**, all green on chromium — UI ⇒ API ⇒ DB parity for the member profile, likes, post CRUD (+ FK cascade), and admin roles. See §7. |
@@ -188,11 +188,11 @@ Everything except `account/*` and the unauthenticated `buggy/*` probes is `[Auth
 | `specs/support/signIn.ts` | `signInThroughUi` / `signInWithToken` — the same two strategies, callable directly from a spec (used by the sign-in health probes) | stable |
 | `specs/support/index.ts` | barrel — specs import only from here | stable |
 | `specs/fixtures/travel-photo.jpg` | upload fixture, reached through `FIXTURES.photo` | stable |
-| `specs/tests/healthCheck/test_Api.spec.ts`, `test_App.spec.ts`, `test_Auth.spec.ts` (3) | the health layer | stable |
+| `specs/tests/healthCheck/testApi.spec.ts`, `testApp.spec.ts`, `testAuth.spec.ts` (3) | the health layer | stable |
 | `specs/tests/smoke/*.spec.ts` (8) | the smoke layer | stable |
 | `specs/tests/regression/**/*.spec.ts` (11, across `auth/`, `guards-and-errors/`, `offers/`, `profile-and-photos/`, `likes-and-lists/`, `messaging/`, `admin/`) | the regression layer | stable |
-| `specs/tests/e2e/*.spec.ts` (4: `test_ProfileDb`, `test_LikesDb`, `test_OffersDb`, `test_RolesDb`) | the e2e layer — UI ⇒ API ⇒ DB parity, see §7 | stable |
-| `src/helpers/browserHealth.helper.ts` | `isNoise`/`isOwnOrigin` — console/network noise predicates for `test_App.spec.ts` | stable |
+| `specs/tests/e2e/*.spec.ts` (4: `testProfileDb`, `testLikesDb`, `testOffersDb`, `testRolesDb`) | the e2e layer — UI ⇒ API ⇒ DB parity, see §7 | stable |
+| `src/helpers/browserHealth.helper.ts` | `isNoise`/`isOwnOrigin` — console/network noise predicates for `testApp.spec.ts` | stable |
 | `src/helpers/dragAndDrop.helper.ts` | `dropFiles` — simulates an HTML5 file drop for zones with no backing `<input>`, used by `fileUploader().dropFiles()` | stable |
 | `src/helpers/db/mssql.helper.ts` | `runMssqlQuery`/`closeMssqlPool` — pooled `mssql/msnodesqlv8` connection, see §7.3 | stable |
 | `src/constants/queries/mssql/{users,likes,posts,roles}.queries.ts` | SQL text for the e2e layer, per `RulesForWritingTests.md` §2 | stable |
@@ -292,7 +292,7 @@ Append new entries at the bottom.
     switched to the faster token path without touching any spec. The same two strategies were pulled out
     as standalone, directly callable helpers in the new `specs/support/signIn.ts`
     (`signInThroughUi`/`signInWithToken`) and exercised once per role in
-    `specs/tests/healthCheck/test_Auth.spec.ts` — 10 tests (`[ID: 0]`–`[ID: 9]`), tagged and titled per
+    `specs/tests/healthCheck/testAuth.spec.ts` — 10 tests (`[ID: 0]`–`[ID: 9]`), tagged and titled per
     `RulesForWritingTests.md`, the reference implementation that document points to. `.env.example` was
     only updated for `TEST_USER_1`/`TEST_PASSWORD_1` — see *Failed attempts* below.
 13. **Added `scripts/run-tests.js`**, a CLI shim in front of `npx playwright test` translating the
@@ -310,34 +310,34 @@ Append new entries at the bottom.
     30 s budget with the extra 10 sign-in checks folded in.
 15. **Brought `api.spec.ts` and `app.spec.ts` into full compliance with `RulesForWritingTests.md`,** the
     last two health-layer files still on the pre-rules shape. Renamed (`git mv`, history preserved) to
-    `test_Api.spec.ts` / `test_App.spec.ts` per §7 — the note in `RulesForWritingTests.md` flagging them
+    `testApi.spec.ts` / `testApp.spec.ts` per §7 — the note in `RulesForWritingTests.md` flagging them
     as due for this rename is now updated to reflect the completed state. Every test gained its
-    project-wide sequential `[ID: n]` (continuing from `test_Auth.spec.ts`'s highest, `9`): IDs `10`–`19`
-    for the ten checks in `test_Api.spec.ts` (the four `probes` loop entries included — each probe object
+    project-wide sequential `[ID: n]` (continuing from `testAuth.spec.ts`'s highest, `9`): IDs `10`–`19`
+    for the ten checks in `testApi.spec.ts` (the four `probes` loop entries included — each probe object
     now carries its own `id`, so the loop still emits one `idTag`/title per iteration without becoming a
-    second function declaration) and `20`–`22` for the three in `test_App.spec.ts`. Both files' single
+    second function declaration) and `20`–`22` for the three in `testApp.spec.ts`. Both files' single
     `describe` block now carries `{ tag: [LAYER_TAG.healthCheck, MUTATION_TAG.unmutation] }` and every
-    test additionally carries `idTag(n)` — all ten `test_Api.spec.ts` checks and all three
-    `test_App.spec.ts` checks are `@unmutation` (pure reads/probes, no persisted state changes), so each
+    test additionally carries `idTag(n)` — all ten `testApi.spec.ts` checks and all three
+    `testApp.spec.ts` checks are `@unmutation` (pure reads/probes, no persisted state changes), so each
     file needed only one tag on its `describe`. Extracted `IGNORED_NOISE`, `isNoise` and `isOwnOrigin` out
     of `app.spec.ts` into `src/helpers/browserHealth.helper.ts` — per §3 a spec may contain no function
-    declarations of its own beyond `test()` callbacks (the `test_Api.spec.ts` `probes` loop is the one
+    declarations of its own beyond `test()` callbacks (the `testApi.spec.ts` `probes` loop is the one
     named exception), and these two predicates have no notion of "a test", making them a `src/helpers/`
     candidate rather than a `specs/support/` one; `isOwnOrigin` now takes `origin` as a parameter instead
     of closing over `CLIENT_URL`, keeping the helper free of a dependency on `specs/support/env`. Updated
     every filename reference in this document and in `README.md`'s single-file run examples. Re-verified
     against a live stack after the rewrite: `tsc --noEmit` clean, `--list` still reports 23 tests in 3
     files with unique IDs, and `npx playwright test --project=health` — **23/23 green in 13.9 s**.
-16. **Wrote the smoke layer** — `specs/tests/smoke/test_Auth.spec.ts`, `test_Navigation.spec.ts`,
-    `test_Offers.spec.ts`, `test_AddOffer.spec.ts`, `test_Likes.spec.ts`, `test_Profile.spec.ts`,
-    `test_Messages.spec.ts`, `test_Admin.spec.ts` — 11 checks, `[ID: 23]`–`[ID: 33]`, per the backlog in
-    §6.2. `test_Navigation.spec.ts` and `test_Auth.spec.ts`'s logout check use nested `test.describe`
+16. **Wrote the smoke layer** — `specs/tests/smoke/testAuth.spec.ts`, `testNavigation.spec.ts`,
+    `testOffers.spec.ts`, `testAddOffer.spec.ts`, `testLikes.spec.ts`, `testProfile.spec.ts`,
+    `testMessages.spec.ts`, `testAdmin.spec.ts` — 11 checks, `[ID: 23]`–`[ID: 33]`, per the backlog in
+    §6.2. `testNavigation.spec.ts` and `testAuth.spec.ts`'s logout check use nested `test.describe`
     blocks to switch `storageState` per role/session within one file, per the "logical group inside a
-    larger file" allowance in `RulesForWritingTests.md` §4. `test_AddOffer.spec.ts` and
-    `test_Messages.spec.ts` create their own data and delete it again through the API in `afterEach`
-    (`posts/delete-post/{id}`, `messages/{id}`), per the test-data strategy in §1; `test_Likes.spec.ts`
+    larger file" allowance in `RulesForWritingTests.md` §4. `testAddOffer.spec.ts` and
+    `testMessages.spec.ts` create their own data and delete it again through the API in `afterEach`
+    (`posts/delete-post/{id}`, `messages/{id}`), per the test-data strategy in §1; `testLikes.spec.ts`
     likes and unlikes the same post inside one test instead, so nothing outlives the test at all — tagged
-    `@unmutation` rather than `@mutation` for that reason. `test_Messages.spec.ts` needed a second seeded
+    `@unmutation` rather than `@mutation` for that reason. `testMessages.spec.ts` needed a second seeded
     member as the message recipient (`Jessie`, from `API/Data/UserSeedData.json`) so `MEMBER`/`Lisa` never
     messages herself. Fixed three page-object bugs this layer's first live run exposed (see *Failed
     attempts* below): `AddOfferPage.attachPhoto` now drops the fixture onto the zone instead of calling
@@ -349,10 +349,10 @@ Append new entries at the bottom.
     `npm run test:smoke -- --project=smoke` — **11/11 green in ~20 s**, well inside the 5 min budget.
     Confirmed through the API afterwards that `Lisa` has no leftover posts, messages or likes.
 17. **Wrote the regression layer** — all seven domains from §6.3, 11 files, 39 checks (`[ID: 34]`–`[ID: 72]`):
-    `auth/test_Registration.spec.ts` + `test_Login.spec.ts`, `guards-and-errors/test_RouteGuards.spec.ts` +
-    `test_ErrorPages.spec.ts`, `offers/test_OfferForm.spec.ts` + `test_OfferLifecycle.spec.ts`,
-    `profile-and-photos/test_EditProfile.spec.ts`, `likes-and-lists/test_Likes.spec.ts`,
-    `messaging/test_Messaging.spec.ts`, `admin/test_Roles.spec.ts` + `test_PostManagement.spec.ts`.
+    `auth/testRegistration.spec.ts` + `testLogin.spec.ts`, `guards-and-errors/testRouteGuards.spec.ts` +
+    `testErrorPages.spec.ts`, `offers/testOfferForm.spec.ts` + `testOfferLifecycle.spec.ts`,
+    `profile-and-photos/testEditProfile.spec.ts`, `likes-and-lists/testLikes.spec.ts`,
+    `messaging/testMessaging.spec.ts`, `admin/testRoles.spec.ts` + `testPostManagement.spec.ts`.
     Verified against a live stack repeatedly: `tsc --noEmit` clean, **39/39 green on
     `--project=regression-chromium`** (two consecutive full runs), and the health (23/23) and smoke (13/13)
     layers re-verified green afterwards since this round touched shared page objects.
@@ -365,15 +365,15 @@ Append new entries at the bottom.
       returns a plain string body, so `RegisterComponent`'s `error` handler assigns the whole
       `HttpErrorResponse` to `validationErrors: string[]`, and `@for` over it throws
       `newCollection[Symbol.iterator] is not a function` client-side before the interceptor's own toast can
-      render (a real, unfixed bug — `test_Registration.spec.ts` `[ID: 39]`); (b) the roles modal's Submit
+      render (a real, unfixed bug — `testRegistration.spec.ts` `[ID: 39]`); (b) the roles modal's Submit
       button is disabled only when **every** role is unchecked (`RolesModalComponent`:
       `[disabled]="selectedRoles.length === 0"`), not "unchanged from the roles the user opened with" as
-      `isSubmitRolesEnabled()`'s name suggests (`test_Roles.spec.ts` `[ID: 70]`); (c) clicking "Test 401
+      `isSubmitRolesEnabled()`'s name suggests (`testRoles.spec.ts` `[ID: 70]`); (c) clicking "Test 401
       error" on `/errors` while signed in as the admin the page requires gets **200**, not 401 — the
       client's own bearer token is attached to `buggy/auth` automatically, so no "Unauthorised" toast is
-      possible from that button in the app as built (`test_ErrorPages.spec.ts` `[ID: 50]`); (d)
+      possible from that button in the app as built (`testErrorPages.spec.ts` `[ID: 50]`); (d)
       `PostManagementComponent` is still the scaffolded placeholder (`<p>post-management works!</p>`) — it
-      never calls `admin/contents-to-moderate` (`test_PostManagement.spec.ts` `[ID: 72]`).
+      never calls `admin/contents-to-moderate` (`testPostManagement.spec.ts` `[ID: 72]`).
     - Two page-object bugs were fixed, both in code no prior test had ever exercised:
       `AdminPage.rolesModal` looked for `bs-modal-container .modal-content`, but this ngx-bootstrap version
       renders `<modal-container>` (no `bs-` prefix) — every roles-modal interaction hung for the full test
@@ -385,23 +385,23 @@ Append new entries at the bottom.
     - The messaging domain needed the most rework to become non-flaky, because `MessageHub` groups by
       **username pair**, not by test or browser context: two tests that each open "Lisa talks to Jessie"
       concurrently join the *same* SignalR group and corrupt each other's read/unread state.
-      `test_MessagesContainers.spec.ts` and `test_MessagesRealtime.spec.ts` were merged into one
-      `test_Messaging.spec.ts` under a single `test.describe.configure({ mode: 'serial' })` so
+      `testMessagesContainers.spec.ts` and `testMessagesRealtime.spec.ts` were merged into one
+      `testMessaging.spec.ts` under a single `test.describe.configure({ mode: 'serial' })` so
       `fullyParallel` can never schedule two of them at once. Cleanup for every created message now deletes
       through **both** parties' tokens — `DELETE messages/{id}` only flags the caller's own side
-      (`SenderDeleted`/`RecipientDeleted`), so a single-sided delete (what `test_Messages.spec.ts`'s smoke
+      (`SenderDeleted`/`RecipientDeleted`), so a single-sided delete (what `testMessages.spec.ts`'s smoke
       cleanup already does) leaves the row sitting in the other party's view forever; this was caught by
       literally finding stray `Regression inbound …` messages still visible in Jessie's own conversation
       view days after her "cleaned up" spec had passed.
     - A second, unrelated concurrency bug: Playwright Test applies whatever `test.use({ storageState })`
       is active for a test as the **default** for *any* `browser.newContext()` called during that test, not
-      only the fixture-provided `page`. `test_Roles.spec.ts` opens a second context to sign in as
+      only the fixture-provided `page`. `testRoles.spec.ts` opens a second context to sign in as
       `test_user_2` while the outer test is signed in as the admin (`STORAGE_STATE.admin`) — an unqualified
       `newContext()` silently opened that second context **already signed in as admin**, and the
       `test_user_2` login attempt then hung forever because `redirectAuthenticatedGuard` never showed the
       login form. Fixed by passing an explicit empty `storageState: { cookies: [], origins: [] }` whenever
       a test that carries a `storageState` needs a second, genuinely anonymous context.
-    - `test_Roles.spec.ts`'s two mutating tests (`[ID: 69]`, `[ID: 71]`) both promote/demote the same
+    - `testRoles.spec.ts`'s two mutating tests (`[ID: 69]`, `[ID: 71]`) both promote/demote the same
       shared `test_user_2` account, so that describe block also uses `mode: 'serial'`, with `afterEach`
       unconditionally resetting the account to `Member` alone after every test regardless of outcome.
     - Several assertions hit the same "the shell renders before its data" trap as Failed attempt #11, in
@@ -410,7 +410,7 @@ Append new entries at the bottom.
       `MemberProfilePage.messageTexts()` right after `startConversation()` (the hub's
       `ReceiveMessageThread` history has not arrived when the panel is merely visible) — all fixed by
       polling/auto-retrying assertions instead of a single read.
-    - Cloudinary-backed photo actions (`test_EditProfile.spec.ts` `[ID: 60]`) and the messaging read-receipt
+    - Cloudinary-backed photo actions (`testEditProfile.spec.ts` `[ID: 60]`) and the messaging read-receipt
       round trip (`[ID: 68]`, which has to wait out a full second sign-in) both needed longer-than-default
       assertion timeouts (15–20 s) to stop being flaky under normal local load — real round-trip latency,
       not a logic bug. `[ID: 69]`/`[ID: 71]`/`[ID: 60]` also needed `test.setTimeout(60_000–90_000)` on top
@@ -424,7 +424,7 @@ Append new entries at the bottom.
       session's verification runs (each time silently: the run still reported both tests green), and was
       only caught by independently checking the API after the run rather than trusting the test-runner
       output. Fixed with `test.describe.configure({ mode: 'serial' })` on that describe block, same
-      remedy as `test_Roles.spec.ts`/`test_Messaging.spec.ts` for the same class of bug — **any two tests
+      remedy as `testRoles.spec.ts`/`testMessaging.spec.ts` for the same class of bug — **any two tests
       that snapshot-and-restore one shared external resource must be serial relative to each other, even
       if their own mutations look field-disjoint.** A first fix attempt also added a hard
       `expect(response.ok()).toBe(true)` around the restore call to fail loudly instead of silently — that
@@ -470,7 +470,7 @@ Append new entries at the bottom.
       query had one been written against the entity name instead).
     - **Four checks, four different tables**: `[ID: 73]` (`dbo.AspNetUsers`) edits `test_user_2`'s profile
       through `/member/edit-profile` and reads the four text columns back directly, snapshot/restored in
-      `beforeEach`/`afterEach` the same way `test_EditProfile.spec.ts` `[ID: 59]` already does for Lisa.
+      `beforeEach`/`afterEach` the same way `testEditProfile.spec.ts` `[ID: 59]` already does for Lisa.
       `[ID: 74]` (`dbo.Likes`) likes/unlikes a post and reads the composite `(AppUserId, PostId)` row
       directly — no API response exposes that row shape, since `Likes` has no surrogate `Id` at all.
       `[ID: 75]` (`dbo.Posts` + `dbo.Likes`) publishes and deletes a post, and also has `test_user_3` like
@@ -478,9 +478,9 @@ Append new entries at the bottom.
       `Likes.PostId` actually fires against a real row rather than only inferring it from the UI. `[ID: 76]`
       (`dbo.AspNetUserRoles`/`dbo.AspNetRoles`) adds and removes a role through the admin roles modal and
       reads the join back directly, rather than trusting `admin/users-with-roles`'s own response the way
-      `test_Roles.spec.ts` does.
+      `testRoles.spec.ts` does.
     - **Deliberately avoided the shared accounts the regression suite already owns**: `test_user_2` and
-      `test_user_3` stand in for `MEMBER`/Lisa and the regression `test_Roles.spec.ts`'s own `test_user_2`
+      `test_user_3` stand in for `MEMBER`/Lisa and the regression `testRoles.spec.ts`'s own `test_user_2`
       respectively — both are already snapshot/restored or promoted/demoted under `mode: 'serial'`
       *within their own file*, which offers no protection against a same-account race from a *different*
       Playwright project (`e2e` has no ordering relative to `regression-*`). Each e2e spec signs in via
@@ -488,7 +488,7 @@ Append new entries at the bottom.
       have one.
     - **A real, previously-undetected leftover was found and fixed** while verifying this layer, not just
       hypothesised: the very first live run failed all four tests on dead end #20 above, and
-      `test_OffersDb.spec.ts`'s post-publish step had already succeeded before the DB call threw, orphaning
+      `testOffersDb.spec.ts`'s post-publish step had already succeeded before the DB call threw, orphaning
       a real `dbo.Posts` row that its `postId`-gated `afterEach` had no way to find. Caught by an
       independent `sqlcmd` audit after the (by-then green) run, not by the test runner — same lesson
       *Changes made* #17 already drew about never trusting a green run alone for shared/persisted state.
@@ -516,8 +516,8 @@ Append new entries at the bottom.
       `EditProfilePage.mainPhotoIndex`, `RegistrationPage.fillAllExcept` + `REQUIRED_REGISTER_FIELDS`,
       `AddOfferPage.fillRequired` + `REQUIRED_POST_FIELDS` (`widgets.ts`), `firstLikablePostWithUniqueTitle`
       (`src/helpers/data/posts.helper.ts`), `collectLoadProblems` (`browserHealth.helper.ts`). `BasePage.toasts`
-      replaces the raw `.locator('.ngx-toastr')` in `test_Registration.spec.ts`. The one
-      `waitForLoadState('networkidle')` in `test_App.spec.ts` keeps an inline, justified disable.
+      replaces the raw `.locator('.ngx-toastr')` in `testRegistration.spec.ts`. The one
+      `waitForLoadState('networkidle')` in `testApp.spec.ts` keeps an inline, justified disable.
     - **Timeouts** (`src/constants/timeouts.ts`, `RulesForWritingTests.md` §8): all six numeric timeouts in the
       specs plus the health project's two in `playwright.config.ts` are named, `TIMEOUT_MULTIPLIER`-scaled
       constants now. Loading `.env` moved out of the config's own `dotenv.config()` call into
@@ -526,13 +526,13 @@ Append new entries at the bottom.
     - **Models** (`src/models/`): zod schemas with inferred types for `UserDto`, `PostDto`,
       `MemberDto`/`PhotoDto`/`MemberUpdateDto`, `MessageDto`, `ApiException`; row interfaces `CountRow`,
       `PostRow`, `RoleNameRow`, `ProfileFieldsRow` (+ the `ProfileFields` mappers that used to be a function in
-      `test_ProfileDb.spec.ts`). All 14 local `interface` declarations are gone from the specs; `ApiClient.ts`
+      `testProfileDb.spec.ts`). All 14 local `interface` declarations are gone from the specs; `ApiClient.ts`
       re-exports `UserDto` from the model. Responses are still cast, not parsed — parsing arrives with the
       phase 2 controllers.
     - **Test data** (`RulesForWritingTests.md` §9): `LOCATION` / `CURRENCY` (`src/constants/testData.ts`), `TOAST`
       (`src/constants/messages.ts`), `buildPost` / `buildRegistration` factories, and `uniqueName` /
       `uniqueSuffix` (timestamp + 8 random hex characters) replacing every `Date.now()` in the specs. `JESSIE`
-      moved from `test_Messaging.spec.ts` (and `RECIPIENT` from `test_Messages.spec.ts`) into `env.ts`, with
+      moved from `testMessaging.spec.ts` (and `RECIPIENT` from `testMessages.spec.ts`) into `env.ts`, with
       `JESSIE_USER` / `JESSIE_PASSWORD` documented in `.env.example`.
     - Docs: `RulesForWritingTests.md` §3 (no branching in a test body), new §8–§10 and checklist items 8–10;
       `README.md` (layers table now lists `e2e`, lint/check scripts, *Quality gate*, project structure);
@@ -564,7 +564,7 @@ Append new entries at the bottom.
       every later one. `[ID: 60]`/`[ID: 61]` depend on it.
     - **Message cleanup fixed** (*Failed attempts* #23, #24): `deleteMessagesBetween`
       (`specs/support/cleanup.ts`) looks the messages up from both sides and deletes them with both tokens;
-      used by `test_Messages.spec.ts` and both `afterEach` hooks of `test_Messaging.spec.ts`.
+      used by `testMessages.spec.ts` and both `afterEach` hooks of `testMessaging.spec.ts`.
     - **`[ID: 73]` restores exactly**: it used to normalise `null` columns to `''` for the comparison and then
       write that normalised snapshot back; it now snapshots and restores the raw API values. `test_user_2`
       and `test_user_4` still hold `''` instead of `NULL` in `Description`/`Interests`, written by the old
@@ -646,10 +646,10 @@ Append new entries at the bottom.
 23. **Landed phase 4 of [`Модифікація проєкту по автоматизації.md`](./Модифікація%20проєкту%20по%20автоматизації.md)
     — the `api` and `database` layers** (2026-09-13). 57 tests added, `[ID: 77]`–`[ID: 133]`; next free ID `134`.
     - **`api` project** (`specs/tests/api/`, `@api`, `npm run test:api`; no `dependencies`, no browser):
-      `test_AuthorizationMatrix.spec.ts` sends 10 requests as `anonymous`/`member`/`moderator`/`admin` — 36 cells, each
+      `testAuthorizationMatrix.spec.ts` sends 10 requests as `anonymous`/`member`/`moderator`/`admin` — 36 cells, each
       its own test (`[ID: 77]`–`[ID: 112]`), built from `PROBES`/`probeTarget` in `specs/support/authorizationProbes.ts`.
-      Fifteen refusals in `test_Account` (`[ID: 113]`–`[ID: 115]`), `test_Posts` (`[ID: 116]`–`[ID: 118]`),
-      `test_Likes` (`[ID: 119]`–`[ID: 121]`), `test_Messages` (`[ID: 122]`–`[ID: 125]`) and `test_Admin`
+      Fifteen refusals in `testAccount` (`[ID: 113]`–`[ID: 115]`), `testPosts` (`[ID: 116]`–`[ID: 118]`),
+      `testLikes` (`[ID: 119]`–`[ID: 121]`), `testMessages` (`[ID: 122]`–`[ID: 125]`) and `testAdmin`
       (`[ID: 126]`–`[ID: 127]`) check the status and the API's own message (`API_ERROR`, `src/constants/messages.ts`).
     - **Two application defects confirmed, then fixed in `EW-TravelApp-.Net8-Angular17`**: `LikesController` had no
       `[Authorize]`, so an anonymous `GET likes/list` or `POST likes/{id}` reached `User.GetUserId()` and came back as a
@@ -660,8 +660,8 @@ Append new entries at the bottom.
     - **A plan expectation that was wrong**: `admin/edit-roles` without `roles` never answers "you must select at least
       one role" — the non-nullable `string roles` parameter makes `[ApiController]` return a `ValidationProblem` first.
       `[ID: 126]` checks that instead.
-    - **`database` project** (`specs/tests/database/`, `@database`, `npm run test:database`): `test_Schema.spec.ts`
-      (`[ID: 128]` applied migrations, `[ID: 129]` the `FK_Likes_Posts_PostId` cascade) and `test_DataIntegrity.spec.ts`
+    - **`database` project** (`specs/tests/database/`, `@database`, `npm run test:database`): `testSchema.spec.ts`
+      (`[ID: 128]` applied migrations, `[ID: 129]` the `FK_Likes_Posts_PostId` cascade) and `testDataIntegrity.spec.ts`
       (`[ID: 130]`–`[ID: 133]`, closing §7.6). Queries in `integrity.queries.ts`, rows in `src/models/db/integrity.rows.ts`.
     - **Framework additions**: `apiAs('anonymous')`; `cleanup.like(liker, postId)`; `HttpClient.postForm`/`putForm`; a raw
       call per probe plus `posts.add`/`get`/`editRaw`/`removeRaw`, `likes.ids`, `messages.sendRaw`, `account.registerRaw`;
@@ -715,6 +715,12 @@ Append new entries at the bottom.
       afterwards: the five accounts exist with their roles, `test_user_2` has one main photo, nothing else is left. The
       container was removed and the API and client restarted in their own windows, as before.
 
+25. **Spec files renamed to camelCase** (2026-09-13, at the user's request): all 34 `specs/tests/**/test_<Name>.spec.ts`
+    became `test<Name>.spec.ts` (`git mv`, so history follows them), and every reference in the docs, comments and
+    README was updated the same way - older entries in this file included, so their paths still resolve.
+    `RulesForWritingTests.md` §7 and checklist item 7 now describe the camelCase convention. No test changed:
+    `playwright test --list` reports 231 tests in 37 files before and after.
+
 ---
 
 ## 5. Failed attempts
@@ -735,20 +741,20 @@ Append new entries at the bottom.
 | 9 | `npm i -D typescript` (unpinned) for `npm run typecheck` | Resolves to TS 7, which removed `moduleResolution=node10`; `tsconfig.json` sets `"moduleResolution": "node"` and the compiler refuses to start — `error TS5108` | Pin `typescript@^5`. Revisit only together with the whole `tsconfig.json` |
 | 10 | Checking CORS with the `request` fixture | `APIRequestContext` sends no `Origin` header, so the API answers happily and the check proves nothing about the browser | Run `fetch` inside the page (`page.evaluate`) — that is the only place the client origin exists. Implemented in `app.health.spec.ts` |
 | 11 | Counting the cards straight after `OffersPage.open()` | `uniqueElement` is the heading, which Angular paints before `posts` comes back — `cardCount()` returns 0 | `await offers.cards.first().waitFor()` before counting, or assert with `expect(offers.cards).toHaveCount(n)`, which retries. Same trap on every list screen (`/lists`, profile tabs) |
-| 12 | Documenting only `TEST_USER_1`/`TEST_PASSWORD_1` in `.env.example` when `env.ts` reads `TEST_USER_1..5` | A machine that copies `.env.example` to `.env` gets a working `TEST_USER_1` and four accounts silently falling back to the hard-coded defaults in `env.ts` — fine until the target database doesn't have `test_user_2..5` seeded under those exact names, which then fails four of the ten `test_Auth.spec.ts` checks with no hint why | Add the remaining four accounts to `.env.example` before the next session touches this file — flagged, not yet done |
+| 12 | Documenting only `TEST_USER_1`/`TEST_PASSWORD_1` in `.env.example` when `env.ts` reads `TEST_USER_1..5` | A machine that copies `.env.example` to `.env` gets a working `TEST_USER_1` and four accounts silently falling back to the hard-coded defaults in `env.ts` — fine until the target database doesn't have `test_user_2..5` seeded under those exact names, which then fails four of the ten `testAuth.spec.ts` checks with no hint why | Add the remaining four accounts to `.env.example` before the next session touches this file — flagged, not yet done |
 | 13 | `AddOfferPage.attachPhoto` calling `fileUploader().selectFiles()` (`setInputFiles` on `input[type="file"]`) | Neither `add-offer.component.html` nor `photo-editor.component.html` renders an `<input>` at all — `[ng2FileDrop]` only ever listens for the native `drop` event and reads `event.dataTransfer.files` (`FileDropDirective.onDrop`). The locator resolves to zero elements and `setInputFiles` hangs until the test's own timeout | Simulate the drop: build a real `DataTransfer`/`File` inside the page via `page.evaluateHandle` and dispatch `drop` on `.my-drop-zone` with it — `src/helpers/dragAndDrop.helper.ts`'s `dropFiles`, exposed on the widget as `fileUploader().dropFiles(...)` |
 | 14 | `AdminPage.userRow(username)` filtering `userRows` by any `<td>` matching the username | The filter is not scoped to a specific column, so a row whose **roles** cell happens to equal the searched username's own role set (e.g. searching `admin`, whose roles are `Admin, Moderator`, also matches `test_user_4`'s row, whose sole role is `Admin`) collides in strict mode | Scope the match to `td:first-child` — the username is always the first cell (`user-management.component.html`) |
 | 15 | `MessagesPage.containerButton` using `getByRole('button', { name })` for the Unread/Inbox/Outbox filter | The elements are `<button>` tags, but ngx-bootstrap's `btnRadio` directive overrides their accessible role to `radio` (they are one option of a radio group) — `getByRole('button', ...)` never resolves and the click times out | Look up `getByRole('radio', { name, exact: true })` instead |
 | 16 | `AdminPage.rolesModal` locating `bs-modal-container .modal-content` | Never exercised by any prior test; this ngx-bootstrap version renders `<modal-container>`, no `bs-` prefix — the locator matched nothing and every roles-modal test hung for the full timeout | Locate `modal-container .modal-content`; when a selector for markup no test has ever touched turns up wrong, dump the real DOM (`page.evaluate(() => el.outerHTML)`) rather than guessing a second time |
 | 17 | `MemberProfilePage.message().readMarker` as `root.getByText(/^\(read/)` | The template renders `(read {{...}})` with a leading space; Playwright tests a `RegExp` against the raw (untrimmed) text content, unlike its lenient/normalized string matching — `^` never matched | Drop the `^` anchor: `getByText(/\(read/)`. Don't anchor a regex text-matcher to the start unless the surrounding markup is known to have no leading whitespace |
-| 18 | Two regression tests each opening their own "Lisa talks to Jessie" conversation, in separate spec files, under `fullyParallel` | `MessageHub` groups connections by **username pair**, not by test/browser — two concurrently-running tests both join the same SignalR group and corrupt each other's read/unread state and message order | Put every test that touches the same seeded conversation in one file under one `test.describe.configure({ mode: 'serial' })`, so Playwright can never schedule two of them at once (`test_Messaging.spec.ts`) |
+| 18 | Two regression tests each opening their own "Lisa talks to Jessie" conversation, in separate spec files, under `fullyParallel` | `MessageHub` groups connections by **username pair**, not by test/browser — two concurrently-running tests both join the same SignalR group and corrupt each other's read/unread state and message order | Put every test that touches the same seeded conversation in one file under one `test.describe.configure({ mode: 'serial' })`, so Playwright can never schedule two of them at once (`testMessaging.spec.ts`) |
 | 19 | `context.browser()!.newContext()` (no options) to sign in a second identity, from inside a test whose `test.use({ storageState: ... })` covers the first identity | Playwright Test applies the active `test.use({ storageState })` as the default for **any** `newContext()` called during that test, not just the fixture's own `page` — the "second" context opened already signed in as the first identity, and `signInThroughUi` then hung waiting for a login form that `redirectAuthenticatedGuard` never showed | Pass an explicit empty override: `newContext({ storageState: { cookies: [], origins: [] } })`, whenever the test itself carries a `storageState` |
 | 20 | `sql.connect('Driver={ODBC Driver 17 for SQL Server};Server=np:\\.\pipe\...')` — a bare connection-string **string** passed to `mssql/msnodesqlv8`'s `connect()` | `connect()` given a string (not an object) runs it through mssql's own generic ADO-style parser, built for tedious's `Server=host;User Id=u;Password=p` shape — it explicitly recognises and rejects the `np:` Named Pipes prefix with `Error: Connection via Named Pipes is not supported`, before the string ever reaches the native `msnodesqlv8` driver that would have understood it fine | Wrap it as an object instead — `connect({ connectionString: '...' })` — which passes the ODBC string straight through to the native driver, unparsed. Needs an `as unknown as config` cast: `@types/mssql`'s `config` interface only declares `connectionString` nested under `options`, but `mssql/lib/msnodesqlv8/connection-pool.js`'s `_poolCreate` reads `this.config.connectionString` at the top level — a real typings gap, confirmed by reading that file |
 | 21 | `sql.connect({ driver: 'msnodesqlv8', server: 'RUSLAN\\SQLEXPRESS', database: 'TravelApp', options: { trustedConnection: true } })` — addressing the instance by `server\instance` name, the same shape `API/appsettings.Development.json`'s `Data:Connection` uses successfully from .NET | Hangs forever (no error, no timeout, not even `connectionTimeout`/`connectionString` options helped) — resolving a named instance this way needs **SQL Server Browser** (UDP 1434) to answer with the instance's dynamic TCP port, and on this machine Browser is `STOPPED` (`sc query SQLBrowser`) with no TCP listener configured for the instance at all (`netstat -ano` shows nothing for `sqlservr.exe`'s PID). ADO.NET's own `SqlClient` avoids this entirely by falling back to Named Pipes/Shared Memory for a local instance, which `msnodesqlv8` does not do automatically | Address the instance by its Named Pipe directly instead: `Server=np:\\.\pipe\MSSQL$SQLEXPRESS\sql\query` (found via `Get-ChildItem '\\.\pipe\' \| Where Name -match sql` in PowerShell) — bypasses Browser and the TCP layer entirely. See `src/helpers/db/mssql.helper.ts` |
-| 22 | `test_OffersDb.spec.ts`'s `afterEach` deleting a created post by a `postId` captured mid-test (`postId = row.Id` right after the DB read that confirms the post exists) | The very first live run of this file hit dead end #20 (the DB connection was still broken) **after** the UI had already published the post but **before** `postId` could be assigned — `afterEach`'s `if (postId === undefined) return` then skipped cleanup entirely, leaving a real, permanent orphan row in `dbo.Posts` (`e2e DB Offer 1788953603041`, id 96) that only turned up during a manual post-run DB audit, not from the test runner itself. Same "green run, corrupted state" shape as entry 17's stray message and the profile-snapshot bug in *Changes made* #17 | Look the post up by `title` through `posts/user/{username}` in `afterEach`, the same pattern `test_OfferLifecycle.spec.ts`/`test_AddOffer.spec.ts` already use, instead of trusting a variable that a mid-test failure can leave unset. Deleted the orphan by hand through the real API once found — never patch a leftover row directly with SQL |
-| 23 | `test_Messages.spec.ts` (smoke) deleting its sent message in `afterEach` with Lisa's token only | `DELETE messages/{id}` only flags the caller's own side, and the row is removed only once both `SenderDeleted` and `RecipientDeleted` are set — every smoke run leaves its `Smoke message …` row behind with `SenderDeleted = 1`, still visible in Jessie's thread (6 such rows found by the post-run audit on 2026-09-12, the oldest from 2026-09-09). The green run never shows it | Delete with both parties' tokens, as `test_Messaging.spec.ts`'s first `afterEach` already does — planned for phase 2's `cleanup` fixture (`Модифікація проєкту по автоматизації.md` §1) |
-| 24 | `test_Messaging.spec.ts` `[ID: 66]`: `afterEach` looking the message up through Lisa's `messages/thread/jessie` after the test itself deleted it through Lisa's UI | `MessageRepository.GetMessageThread` hides a message from a recipient who has deleted it (`RecipientDeleted == false` in its filter), so after Lisa's delete the lookup never finds it and Jessie's side is never deleted — one `Regression inbound …` row with `RecipientDeleted = 1` survives every run (19 such rows found by the same audit) | Look the message up from the side that has *not* deleted it (Jessie's `messages/thread/lisa`), or keep the id `POST messages` returns when the test creates it — planned for phase 2's `cleanup` fixture |
-| 25 | `test_Messages.spec.ts` `[ID: 32]` opening `/messages` straight after `MemberProfilePage.sendMessage` clicked Send | The UI sends through the SignalR hub (`hubConnection.invoke('SendMessage')`), and leaving the member page destroys `member-detail.component`, whose `ngOnDestroy` calls `stopHubConnection()` — an invocation the server has not processed yet dies with the connection, the message is never saved, and the Outbox shows *No messages yet*. Timing-dependent: it had passed with Lisa's account and failed on the first run with the emptier, faster-loading `test_user_2` | `sendMessage` now waits until the hub's `NewMessage` echo puts the text into the thread before returning — the wait `[ID: 68]` already did by hand in the spec |
+| 22 | `testOffersDb.spec.ts`'s `afterEach` deleting a created post by a `postId` captured mid-test (`postId = row.Id` right after the DB read that confirms the post exists) | The very first live run of this file hit dead end #20 (the DB connection was still broken) **after** the UI had already published the post but **before** `postId` could be assigned — `afterEach`'s `if (postId === undefined) return` then skipped cleanup entirely, leaving a real, permanent orphan row in `dbo.Posts` (`e2e DB Offer 1788953603041`, id 96) that only turned up during a manual post-run DB audit, not from the test runner itself. Same "green run, corrupted state" shape as entry 17's stray message and the profile-snapshot bug in *Changes made* #17 | Look the post up by `title` through `posts/user/{username}` in `afterEach`, the same pattern `testOfferLifecycle.spec.ts`/`testAddOffer.spec.ts` already use, instead of trusting a variable that a mid-test failure can leave unset. Deleted the orphan by hand through the real API once found — never patch a leftover row directly with SQL |
+| 23 | `testMessages.spec.ts` (smoke) deleting its sent message in `afterEach` with Lisa's token only | `DELETE messages/{id}` only flags the caller's own side, and the row is removed only once both `SenderDeleted` and `RecipientDeleted` are set — every smoke run leaves its `Smoke message …` row behind with `SenderDeleted = 1`, still visible in Jessie's thread (6 such rows found by the post-run audit on 2026-09-12, the oldest from 2026-09-09). The green run never shows it | Delete with both parties' tokens, as `testMessaging.spec.ts`'s first `afterEach` already does — planned for phase 2's `cleanup` fixture (`Модифікація проєкту по автоматизації.md` §1) |
+| 24 | `testMessaging.spec.ts` `[ID: 66]`: `afterEach` looking the message up through Lisa's `messages/thread/jessie` after the test itself deleted it through Lisa's UI | `MessageRepository.GetMessageThread` hides a message from a recipient who has deleted it (`RecipientDeleted == false` in its filter), so after Lisa's delete the lookup never finds it and Jessie's side is never deleted — one `Regression inbound …` row with `RecipientDeleted = 1` survives every run (19 such rows found by the same audit) | Look the message up from the side that has *not* deleted it (Jessie's `messages/thread/lisa`), or keep the id `POST messages` returns when the test creates it — planned for phase 2's `cleanup` fixture |
+| 25 | `testMessages.spec.ts` `[ID: 32]` opening `/messages` straight after `MemberProfilePage.sendMessage` clicked Send | The UI sends through the SignalR hub (`hubConnection.invoke('SendMessage')`), and leaving the member page destroys `member-detail.component`, whose `ngOnDestroy` calls `stopHubConnection()` — an invocation the server has not processed yet dies with the connection, the message is never saved, and the Outbox shows *No messages yet*. Timing-dependent: it had passed with Lisa's account and failed on the first run with the emptier, faster-loading `test_user_2` | `sendMessage` now waits until the hub's `NewMessage` echo puts the text into the thread before returning — the wait `[ID: 68]` already did by hand in the spec |
 | 26 | Loading the native SQL Server driver lazily with `await import('mssql/msnodesqlv8')` inside `MssqlClient.connect` | Playwright hands a dynamic `import()` to Node's ESM resolver, which does not add `.js` to a bare package subpath: *Cannot find module node_modules/mssql/msnodesqlv8 ... Did you mean to import "mssql/msnodesqlv8.js"?* — every e2e test failed in the `db` fixture. The static `import` used before only worked because it compiles to `require` | `require('mssql/msnodesqlv8') as typeof import('mssql/msnodesqlv8')` inside `connect()`, with a justified `no-require-imports` disable — still loaded on demand, but resolved the CommonJS way |
 
 ---
@@ -789,7 +795,7 @@ No page objects beyond the availability check; the API specs use the `request` f
 
 | File | Scenario | Assertion |
 | --- | --- | --- |
-| `test_Api.spec.ts` | `[ID: 10]` `POST account/login` with the seeded member | 200, JWT `token` whose `unique_name` and `role` match, `username` (lower-cased by the seed), `knownAs` |
+| `testApi.spec.ts` | `[ID: 10]` `POST account/login` with the seeded member | 200, JWT `token` whose `unique_name` and `role` match, `username` (lower-cased by the seed), `knownAs` |
 | | `[ID: 11]` `POST account/login` with the seeded admin | 200, token carries `Admin` **and** `Moderator` |
 | | `[ID: 12]` `POST account/login` with a wrong password | 401 |
 | | `[ID: 13]` `GET posts` without a token | 401 |
@@ -799,10 +805,10 @@ No page objects beyond the availability check; the API specs use the `request` f
 | | `[ID: 17]` `GET buggy/bad-request` | 400 |
 | | `[ID: 18]` `GET buggy/auth` without a token | 401 |
 | | `[ID: 19]` 500 body | `ApiException` shape — `statusCode`, `message`, `application/json` |
-| `test_App.spec.ts` | `[ID: 20]` `GET` the client root | 200, title `TravelApp`, the login card renders |
+| `testApp.spec.ts` | `[ID: 20]` `GET` the client root | 200, title `TravelApp`, the login card renders |
 | | `[ID: 21]` Page load | no `console.error`, no uncaught error, no failed request to the client origin |
 | | `[ID: 22]` Client → API reachability | `fetch` **inside the page** reaches `apiUrl` and gets 404 → CORS admits the client origin |
-| `test_Auth.spec.ts` | `[ID: 0]` `test_user_1` (no role) signs in **through the login form** | lands on `/offers`, nav greeting matches the username |
+| `testAuth.spec.ts` | `[ID: 0]` `test_user_1` (no role) signs in **through the login form** | lands on `/offers`, nav greeting matches the username |
 | | `[ID: 1]` `test_user_2` (**Member**) signs in **through the login form** | same |
 | | `[ID: 2]` `test_user_3` (**Moderator**) signs in **through the login form** | same |
 | | `[ID: 3]` `test_user_4` (**Admin**) signs in **through the login form** | same |
@@ -814,7 +820,7 @@ Extend that list instead of loosening the assertions.
 
 **Done when:** green in under 30 s, no dependency on any other layer.
 **Status:** ✅ 23/23 green against a live stack in 13.9 s (`npx playwright test --project=health`, run
-today), no login state created by `test_Api.spec.ts`/`test_App.spec.ts`, no data touched; `test_Auth.spec.ts`
+today), no login state created by `testApi.spec.ts`/`testApp.spec.ts`, no data touched; `testAuth.spec.ts`
 does sign in (both through the UI and by planting a token) but performs no writes.
 
 ---
@@ -827,14 +833,14 @@ the `*.smoke.spec.ts` names originally sketched here)*
 
 | File | IDs | Scenario | Assertion |
 | --- | --- | --- | --- |
-| `test_Auth.spec.ts` | 23–24 | Login as `Lisa` from the login card; logout from the user menu | lands on `/offers` with the nav greeting; back on `/` with the login card visible |
-| `test_Navigation.spec.ts` | 25–26 | Nav links per role, then reached via `goTo()` | member sees Offers/Lists/Messages, admin also sees Admin/Errors (`visibleNavLinks()`); each destination's `uniqueElement` renders |
-| `test_Offers.spec.ts` | 27–28 | Open `/offers`; open the first card | at least one card, `isEmpty()` false; `/offers/:id` renders with a matching title |
-| `test_AddOffer.spec.ts` | 29 | `attachPhoto()` + `publish()` | success toast; the post appears on `/member/profile`; cleanup deletes it via the API in `afterEach` |
-| `test_Likes.spec.ts` | 30 | Like another member's post, then unlike it in the same test | appears on `/lists` while liked; no trace left afterwards (`@unmutation`, not `@mutation` — see §4) |
-| `test_Profile.spec.ts` | 31 | Open `/member/profile` | sidebar + Posts and About tabs render |
-| `test_Messages.spec.ts` | 32 | Send a message from the `/members/:username` Messages tab | shows up in the `/messages` Outbox; cleanup deletes it via the API in `afterEach` |
-| `test_Admin.spec.ts` | 33 | Admin opens `/admin` | User management tab lists users with their roles |
+| `testAuth.spec.ts` | 23–24 | Login as `Lisa` from the login card; logout from the user menu | lands on `/offers` with the nav greeting; back on `/` with the login card visible |
+| `testNavigation.spec.ts` | 25–26 | Nav links per role, then reached via `goTo()` | member sees Offers/Lists/Messages, admin also sees Admin/Errors (`visibleNavLinks()`); each destination's `uniqueElement` renders |
+| `testOffers.spec.ts` | 27–28 | Open `/offers`; open the first card | at least one card, `isEmpty()` false; `/offers/:id` renders with a matching title |
+| `testAddOffer.spec.ts` | 29 | `attachPhoto()` + `publish()` | success toast; the post appears on `/member/profile`; cleanup deletes it via the API in `afterEach` |
+| `testLikes.spec.ts` | 30 | Like another member's post, then unlike it in the same test | appears on `/lists` while liked; no trace left afterwards (`@unmutation`, not `@mutation` — see §4) |
+| `testProfile.spec.ts` | 31 | Open `/member/profile` | sidebar + Posts and About tabs render |
+| `testMessages.spec.ts` | 32 | Send a message from the `/members/:username` Messages tab | shows up in the `/messages` Outbox; cleanup deletes it via the API in `afterEach` |
+| `testAdmin.spec.ts` | 33 | Admin opens `/admin` | User management tab lists users with their roles |
 
 **Done when:** green on chromium in under 5 min and wired into the PR workflow.
 **Status:** ✅ 11/11 green on chromium in ~20 s (`npm run test:smoke -- --project=smoke`, run
@@ -919,7 +925,7 @@ see *Changes made* #17 and *Failed attempts* #16–19.
 Step 0 ✅  →  6.1 health ✅  →  6.2 smoke ✅  →  6.3 regression ✅  →  7 e2e (pilot ✅, rest open)
 ```
 
-Smoke used the `setup` project and `specs/fixtures/` already in place, so `test_AddOffer.spec.ts` had its
+Smoke used the `setup` project and `specs/fixtures/` already in place, so `testAddOffer.spec.ts` had its
 image ready and no spec needed to log in through the UI unless that *is* what it tests.
 
 Regression domains landed in the order above — auth and guards first, since everything else depends on a
@@ -928,7 +934,7 @@ suite on `regression-firefox`/`regression-webkit` (only chromium was verified he
 item 7), and fix the two real bugs `[ID: 39]` and `[ID: 72]` document rather than just assert.
 
 `e2e` landed after regression specifically because it depends on knowing the regression suite's own shared
-accounts (`MEMBER`/Lisa, `test_Roles.spec.ts`'s `test_user_2`) well enough to deliberately avoid them — see
+accounts (`MEMBER`/Lisa, `testRoles.spec.ts`'s `test_user_2`) well enough to deliberately avoid them — see
 §4 item 18 and §7.5's per-row account choices. Still open: the four remaining §7.5 rows
 (Photos/Main-photo-guard/Messaging/Registration), §7.6's DB-only integrity checks, and wiring `test:e2e`
 into CI alongside Step 0's own still-open item 7.
@@ -948,8 +954,8 @@ those, and the rule holds for anything added to it: don't mark a row done withou
 ### 7.1 What gap this closes
 
 Every mutating regression test today proves **UI ⇒ API**: it acts through a Page Object, then calls
-`ApiClient` and re-`GET`s the same resource to confirm the response matches (`test_EditProfile.spec.ts`'s
-`beforeEach`/`afterEach` snapshot, `test_Roles.spec.ts`'s post-submit role check, etc.). It never proves
+`ApiClient` and re-`GET`s the same resource to confirm the response matches (`testEditProfile.spec.ts`'s
+`beforeEach`/`afterEach` snapshot, `testRoles.spec.ts`'s post-submit role check, etc.). It never proves
 **API ⇒ DB** — that the row `UsersController`/`PostsController`/… claims to have saved is what is actually
 committed in `TravelApp`. In practice API and DB agree almost always, which is exactly why this class of bug
 survives: an interceptor that swallows a partial failure, a controller that returns the in-memory entity
@@ -1023,7 +1029,7 @@ exist anywhere else in `API/`.
 ### 7.4 Assertion pattern
 
 ```ts
-// after the existing UI action + API re-GET, e.g. inside test_EditProfile.spec.ts [ID: 59]
+// after the existing UI action + API re-GET, e.g. inside testEditProfile.spec.ts [ID: 59]
 const [dbRow] = await runMssqlQuery(UsersQueries.getByUsername, { username: MEMBER.username });
 expect({
   description: dbRow.Description,
@@ -1053,14 +1059,14 @@ shared accounts the named existing test itself already owns (see item 18's own n
 
 | Domain | Existing UI-level test | DB assertion | Table(s) | Status |
 | --- | --- | --- | --- | --- |
-| Profile fields | `profile-and-photos/test_EditProfile.spec.ts` `[ID: 59]` | query `AspNetUsers` by `UserName`; assert `Description`/`Interests`/`City`/`Country` equal the values just typed | `AspNetUsers` | ✅ `[ID: 73]`, `test_ProfileDb.spec.ts` (`test_user_2`) |
-| Photos | `profile-and-photos/test_EditProfile.spec.ts` `[ID: 60]` | after upload, query `GeneralPhotos` by `AppUserId`; assert row count is `before + 1` and exactly one row has `IsMain = 1` at every step (upload → set-main → restore → delete) | `GeneralPhotos` | ⬜ still open — needs `photos.queries.ts` |
-| Main-photo guard | `profile-and-photos/test_EditProfile.spec.ts` `[ID: 61]` | query `GeneralPhotos` for Lisa; assert `COUNT(*) WHERE IsMain = 1` is exactly `1`, matching the disabled buttons the UI shows | `GeneralPhotos` | ⬜ still open |
-| Offers CRUD | `offers/test_OfferLifecycle.spec.ts` | create: row exists in `Posts` with the submitted fields. Delete: row is gone **and** any `Likes` row referencing it is gone too (`OnDelete(DeleteBehavior.Cascade)`) | `Posts`, `Likes` | ✅ `[ID: 75]`, `test_OffersDb.spec.ts` (`test_user_2` creates, `test_user_3` likes it first through the API so the cascade has a real row to remove) |
-| Likes | `likes-and-lists/test_Likes.spec.ts` | after like: one `Likes` row with the exact `(AppUserId, PostId)` pair exists. After unlike: it's gone | `Likes` | ✅ `[ID: 74]`, `test_LikesDb.spec.ts` (`test_user_2`) |
-| Messaging | `messaging/test_Messaging.spec.ts` | after send: `Messages` row exists with matching `Content`, `MessageSent` set, both delete flags `0`. After one party deletes: assert **only that party's** flag flipped and the row still exists | `Messages` | ⬜ still open — needs `messages.queries.ts` |
-| Roles | `admin/test_Roles.spec.ts` | join `AspNetUserRoles` → `AspNetRoles` for the target `UserId`; assert the role-name set matches what the modal showed pre-submit | `AspNetUserRoles`, `AspNetRoles` | ✅ `[ID: 76]`, `test_RolesDb.spec.ts` (`test_user_3`, not `test_Roles.spec.ts`'s own `test_user_2` — see item 18) |
-| Registration | `auth/test_Registration.spec.ts` | query `AspNetUsers` by the newly chosen username; assert the row matches the submitted fields. **No cleanup path exists** (no delete-account flow in the app) — needs the plan's one sanctioned direct-write exception (`DELETE FROM AspNetUsers WHERE Id = @id`, scoped to the exact id just read back) | `AspNetUsers` | ⬜ still open |
+| Profile fields | `profile-and-photos/testEditProfile.spec.ts` `[ID: 59]` | query `AspNetUsers` by `UserName`; assert `Description`/`Interests`/`City`/`Country` equal the values just typed | `AspNetUsers` | ✅ `[ID: 73]`, `testProfileDb.spec.ts` (`test_user_2`) |
+| Photos | `profile-and-photos/testEditProfile.spec.ts` `[ID: 60]` | after upload, query `GeneralPhotos` by `AppUserId`; assert row count is `before + 1` and exactly one row has `IsMain = 1` at every step (upload → set-main → restore → delete) | `GeneralPhotos` | ⬜ still open — needs `photos.queries.ts` |
+| Main-photo guard | `profile-and-photos/testEditProfile.spec.ts` `[ID: 61]` | query `GeneralPhotos` for Lisa; assert `COUNT(*) WHERE IsMain = 1` is exactly `1`, matching the disabled buttons the UI shows | `GeneralPhotos` | ⬜ still open |
+| Offers CRUD | `offers/testOfferLifecycle.spec.ts` | create: row exists in `Posts` with the submitted fields. Delete: row is gone **and** any `Likes` row referencing it is gone too (`OnDelete(DeleteBehavior.Cascade)`) | `Posts`, `Likes` | ✅ `[ID: 75]`, `testOffersDb.spec.ts` (`test_user_2` creates, `test_user_3` likes it first through the API so the cascade has a real row to remove) |
+| Likes | `likes-and-lists/testLikes.spec.ts` | after like: one `Likes` row with the exact `(AppUserId, PostId)` pair exists. After unlike: it's gone | `Likes` | ✅ `[ID: 74]`, `testLikesDb.spec.ts` (`test_user_2`) |
+| Messaging | `messaging/testMessaging.spec.ts` | after send: `Messages` row exists with matching `Content`, `MessageSent` set, both delete flags `0`. After one party deletes: assert **only that party's** flag flipped and the row still exists | `Messages` | ⬜ still open — needs `messages.queries.ts` |
+| Roles | `admin/testRoles.spec.ts` | join `AspNetUserRoles` → `AspNetRoles` for the target `UserId`; assert the role-name set matches what the modal showed pre-submit | `AspNetUserRoles`, `AspNetRoles` | ✅ `[ID: 76]`, `testRolesDb.spec.ts` (`test_user_3`, not `testRoles.spec.ts`'s own `test_user_2` — see item 18) |
+| Registration | `auth/testRegistration.spec.ts` | query `AspNetUsers` by the newly chosen username; assert the row matches the submitted fields. **No cleanup path exists** (no delete-account flow in the app) — needs the plan's one sanctioned direct-write exception (`DELETE FROM AspNetUsers WHERE Id = @id`, scoped to the exact id just read back) | `AspNetUsers` | ⬜ still open |
 
 ### 7.6 New DB-only integrity checks — ✅ built as the `database` layer (§4 item 23)
 
@@ -1074,9 +1080,9 @@ These have no single UI action to hang off of; they check an invariant the UI re
 
 All three are read-only and `@unmutation`. They landed in their own `database` layer, not in `specs/tests/e2e/`
 as this section first planned: e2e crosses the UI and the database by definition, and these need neither the UI
-nor the API. `specs/tests/database/test_DataIntegrity.spec.ts` holds `[ID: 131]` (every seeded member has exactly
+nor the API. `specs/tests/database/testDataIntegrity.spec.ts` holds `[ID: 131]` (every seeded member has exactly
 one main photo, next to `[ID: 130]`: nobody has several), `[ID: 132]` (no orphan like) and `[ID: 133]` (no message
-kept after both sides deleted it); `test_Schema.spec.ts` adds `[ID: 128]` (applied migrations) and `[ID: 129]`
+kept after both sides deleted it); `testSchema.spec.ts` adds `[ID: 128]` (applied migrations) and `[ID: 129]`
 (the `Likes` → `Posts` cascade itself).
 
 ### 7.7 Rollout order
@@ -1087,9 +1093,9 @@ DB-0 (infra: §7.3) ✅  →  [ID: 73] pilot (§7.5, simplest schema) ✅  →  
   →  still open: Photos/Main-photo-guard/Messaging/Registration rows (§7.5), wire into CI
 ```
 
-The pilot ran exactly as planned: `test_ProfileDb.spec.ts` (`AspNetUsers`, no composite key, no FK cascade
-to reason about) went first and proved the helper + query-constants pattern before `test_LikesDb.spec.ts`
-touched `Likes`' composite key or `test_OffersDb.spec.ts` touched the FK cascade.
+The pilot ran exactly as planned: `testProfileDb.spec.ts` (`AspNetUsers`, no composite key, no FK cascade
+to reason about) went first and proved the helper + query-constants pattern before `testLikesDb.spec.ts`
+touched `Likes`' composite key or `testOffersDb.spec.ts` touched the FK cascade.
 
 ### 7.8 Risks carried over from existing experience
 
@@ -1097,12 +1103,12 @@ touched `Likes`' composite key or `test_OffersDb.spec.ts` touched the FK cascade
   the mistake the framework specifically avoided for the API (`ApiClient` reuses a token per test, not per
   request) — and, as built, is never explicitly closed either; Playwright force-exits each worker once its
   tests finish, which is what actually tears the pool's connection down (§7.3 point 3).
-- **Parallelism.** The same class of bug §4/§5 already hit twice (`test_Roles.spec.ts`,
-  `test_Messaging.spec.ts`, `[ID: 59]`/`[ID: 60]`'s shared snapshot) applies again here: two tests reading
+- **Parallelism.** The same class of bug §4/§5 already hit twice (`testRoles.spec.ts`,
+  `testMessaging.spec.ts`, `[ID: 59]`/`[ID: 60]`'s shared snapshot) applies again here: two tests reading
   *and* writing the same row concurrently under `fullyParallel` will race even if the DB read itself is
   correct. Any new §7.6 check that reads shared seed data stays `@unmutation` and read-only for exactly this
   reason; any §7.5 assertion added to an already-serial describe block (`[ID: 59]`/`[ID: 60]`,
-  `test_Roles.spec.ts`) inherits that protection for free.
+  `testRoles.spec.ts`) inherits that protection for free.
 - **Secrets.** If this suite is ever pointed at a shared/CI SQL Server instance rather than a local one, the
   DB connection string becomes exactly as sensitive as the credentials in `.env` — same git-ignore treatment.
   As built, the fallback default lives inside `mssql.helper.ts` itself rather than `env.ts` (§7.3 point 2),

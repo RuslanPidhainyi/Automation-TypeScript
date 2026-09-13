@@ -5,7 +5,7 @@ import { expect, idTag, LAYER_TAG, MUTATION_TAG, test, TEST_USER_3 } from '../..
 
 /**
  * e2e layer - closes the UI ⇒ API ⇒ DB triangle for the roles modal
- * (`regression/admin/test_Roles.spec.ts` already proves the UI side by
+ * (`regression/admin/testRoles.spec.ts` already proves the UI side by
  * reading the roles cell of the user table, i.e. the same table the modal's
  * own `admin/users-with-roles` call re-populates). This file instead joins
  * `dbo.AspNetUserRoles` -> `dbo.AspNetRoles` directly, so a bug where the

@@ -10,7 +10,7 @@ A spec file reads like a scenario — open a page, call a handful of named actio
 else. Locators, SQL, and multi-line utility logic are never written *at* the test; they are written *once*,
 somewhere reusable, and the test only calls them by name.
 
-`specs/tests/healthCheck/test_Auth.spec.ts` is the reference implementation of every rule below.
+`specs/tests/healthCheck/testAuth.spec.ts` is the reference implementation of every rule below.
 
 ---
 
@@ -119,7 +119,7 @@ test('a registered user is persisted', async ({ page, db }) => {
 ```
 
 Rule of thumb: a spec file should contain **no function declarations of its own** beyond the `test()`
-callbacks (the small `probes.map(...)`-style table-driven loop in `test_Api.spec.ts` is the accepted exception —
+callbacks (the small `probes.map(...)`-style table-driven loop in `testApi.spec.ts` is the accepted exception —
 it stays inline because it only drives `test.each`-style titles, it does not implement behaviour).
 
 A test body holds **no branching** either — no `if`, `?:`, `&&`/`||` or `switch`. A plain `for` loop over a
@@ -166,7 +166,7 @@ test('[ID: 1] test_user_2 like Member role can sign in through the login form', 
   grep -rhoE '\[ID: [0-9]+\]|\bid: [0-9]+' specs/tests | grep -oE '[0-9]+' | sort -n | tail -1
   ```
 
-  The second pattern finds the table-driven tests (`test_Api.spec.ts`, `test_AuthorizationMatrix.spec.ts`),
+  The second pattern finds the table-driven tests (`testApi.spec.ts`, `testAuthorizationMatrix.spec.ts`),
   whose titles build `[ID: ${id}]` from an `id: n` entry and so never contain a literal `[ID: n]`.
 - IDs are **never reused or renumbered**, even if the test they belonged to is later deleted — a stale
   gap is fine, a collision is not (it breaks the 1:1 mapping to the tag in §6).
@@ -237,7 +237,7 @@ Three tags, every time, each pulled from its own constant:
   which layer runs.
 
 **`test.describe` itself carries `{ tag: [...] }` too** — the layer tag always, and the mutation tag when
-every test inside the block shares the same mutation status (as `test_Auth.spec.ts` does — ten tests, all
+every test inside the block shares the same mutation status (as `testAuth.spec.ts` does — ten tests, all
 `@unmutation`). Playwright merges a `describe`-level tag onto every test inside it, so the group-level tag
 is not just documentation: it is what lets `-g "@healthCheck"` or `-G "@mutation"` find a test even before
 its own tag is read. If a block would mix mutating and non-mutating tests, split it into two `describe`
@@ -245,30 +245,35 @@ blocks — one per mutation status — rather than putting a misleading tag on t
 
 ---
 
-## 7. Spec file naming — `test_<FunctionalityChecked>.spec.ts`
+## 7. Spec file naming — `test<FunctionalityChecked>.spec.ts` (camelCase)
 
 ```
-test_[NameOfCheckedFunctionality].spec.ts
+test[NameOfCheckedFunctionality].spec.ts
 ```
 
-- `test_` is a literal prefix — always lower-case, always followed by an underscore.
-- `<NameOfCheckedFunctionality>` is PascalCase and names the functionality the file covers, not the
-  scenario or the layer — `Auth`, `Offers`, `Likes`, `AdminRoles`, not `Login1` or `SmokeAuth` (the layer
-  is already the folder it sits in, per §6, and is never repeated in the filename).
-- One file per functionality per layer folder: `specs/tests/healthCheck/test_Auth.spec.ts` and a future
-  `specs/tests/smoke/test_Auth.spec.ts` are two different files checking the same functionality at two
-  different layers — both keep the `test_Auth` stem.
+The stem is one camelCase word: the literal prefix `test`, joined directly to the name of the functionality,
+which starts with a capital letter.
+
+- `test` is a literal prefix — always lower-case, with no separator after it.
+- `<NameOfCheckedFunctionality>` starts with a capital letter and names the functionality the file covers, not
+  the scenario or the layer — `Auth`, `Offers`, `Likes`, `AuthorizationMatrix`, not `Login1` or `SmokeAuth` (the
+  layer is already the folder it sits in, per §6, and is never repeated in the filename).
+- One file per functionality per layer folder: `specs/tests/healthCheck/testAuth.spec.ts` and
+  `specs/tests/smoke/testAuth.spec.ts` are two different files checking the same functionality at two different
+  layers — both keep the `testAuth` stem.
 
 ```
-✔ specs/tests/healthCheck/test_Auth.spec.ts
-✔ specs/tests/smoke/test_Offers.spec.ts
-✘ specs/tests/healthCheck/testAuth.spec.ts        no underscore after `test`
-✘ specs/tests/healthCheck/auth.spec.ts            missing the `test_` prefix
-✘ specs/tests/healthCheck/test_auth.spec.ts       functionality name must be PascalCase
+✔ specs/tests/healthCheck/testAuth.spec.ts
+✔ specs/tests/api/testAuthorizationMatrix.spec.ts
+✘ specs/tests/healthCheck/test_Auth.spec.ts       no underscore - the stem is one camelCase word
+✘ specs/tests/healthCheck/auth.spec.ts            missing the `test` prefix
+✘ specs/tests/healthCheck/testauth.spec.ts        the functionality name starts with a capital letter
+✘ specs/tests/healthCheck/TestAuth.spec.ts        the prefix is lower-case
 ```
 
-`test_Api.spec.ts` and `test_App.spec.ts` in the same folder were renamed to this convention from their
-original `api.spec.ts` / `app.spec.ts` names — don't reintroduce the old, unprefixed style for a new file.
+Every spec was renamed to this convention on 2026-09-13 from the earlier `test_<Name>.spec.ts` form (and
+`testApi` / `testApp` before that from `api.spec.ts` / `app.spec.ts`) — don't reintroduce either style for a new
+file.
 
 ---
 
@@ -518,8 +523,8 @@ land on `/offers`, and the row exists.
    all imported from `specs/support/tags.ts`, never hand-typed strings. Numeric tag matches the ID, exactly
    one layer tag matching the folder the file is in, exactly one mutation tag (`mutation` if the test
    creates/edits/deletes persisted data, `unmutation` if it only reads or signs in).
-7. File is named `test_<FunctionalityChecked>.spec.ts` — literal `test_` prefix, PascalCase functionality
-   name, no layer name repeated in it.
+7. File is named `test<FunctionalityChecked>.spec.ts` in camelCase — the lower-case `test` prefix joined directly
+   to the functionality name, which starts with a capital letter; no layer name repeated in it.
 8. Every non-default timeout is a `TIMEOUT.*` constant (§8).
 9. Shared values, toast texts, payloads, unique names and data shapes come from `src/constants/`,
    `src/helpers/data/` and `src/models/` (§9).

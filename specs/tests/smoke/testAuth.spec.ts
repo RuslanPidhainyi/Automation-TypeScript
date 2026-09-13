@@ -6,7 +6,7 @@ import { expect, idTag, LAYER_TAG, MUTATION_TAG, test, TEST_USER_2 } from '../..
  *
  * Only the `member` test account (`test_user_2`) is exercised here; every
  * role/strategy combination is already covered at the health layer
- * (`test_Auth.spec.ts` under `healthCheck/`). This file only proves the one path
+ * (`testAuth.spec.ts` under `healthCheck/`). This file only proves the one path
  * a real visitor takes.
  */
 test.describe(

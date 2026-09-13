@@ -19,7 +19,7 @@ import { expect, idTag, LAYER_TAG, MUTATION_TAG, PROBES, probeTarget, test } fro
  *
  * A signed-in caller's roles travel in the token issued at sign-in. A test that
  * changes those accounts' roles while this file runs
- * (`regression/admin/test_Roles.spec.ts`, `e2e/test_RolesDb.spec.ts`) would turn
+ * (`regression/admin/testRoles.spec.ts`, `e2e/testRolesDb.spec.ts`) would turn
  * a 403 here into a 200 - run the `api` project on its own.
  */
 test.describe(

@@ -66,8 +66,8 @@ npm run report        # open the last HTML report
 Run a single file or test:
 
 ```bash
-npx playwright test specs/tests/healthCheck/test_Api.spec.ts
-npx playwright test specs/tests/healthCheck/test_Api.spec.ts -g "401"
+npx playwright test specs/tests/healthCheck/testApi.spec.ts
+npx playwright test specs/tests/healthCheck/testApi.spec.ts -g "401"
 ```
 
 On a slower machine or runner, stretch every timeout at once instead of editing specs:
@@ -103,7 +103,7 @@ timeline/DOM snapshot/network/console for each one after the fact.
 
 ```bash
 npm run test:ui                                                    # whole suite, pick tests in the UI
-npm run test:ui -- specs/tests/healthCheck/test_Auth.spec.ts       # scoped to one file
+npm run test:ui -- specs/tests/healthCheck/testAuth.spec.ts       # scoped to one file
 npx playwright test --ui --project=health -g "@3"                  # scoped to one tagged test
 ```
 
@@ -113,7 +113,7 @@ locator picker.
 
 ```bash
 npm run test:debug                                                  # whole suite, headed, paused at start
-npm run test:debug -- specs/tests/healthCheck/test_Auth.spec.ts -g "@3"   # a single test
+npm run test:debug -- specs/tests/healthCheck/testAuth.spec.ts -g "@3"   # a single test
 ```
 
 Setting `PWDEBUG=1` directly does the same thing for any command, including the layer scripts:

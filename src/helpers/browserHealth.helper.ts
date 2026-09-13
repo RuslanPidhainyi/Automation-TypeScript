@@ -2,7 +2,7 @@ import { ConsoleMessage, Page, Request, Response } from '@playwright/test';
 
 /**
  * Browser console/network checks for the client health probe
- * (`test_App.spec.ts`). No notion of "a test" or "a scenario" - called directly
+ * (`testApp.spec.ts`). No notion of "a test" or "a scenario" - called directly
  * by the spec, since no support-level wrapper exists for this yet
  * (`RulesForWritingTests.md` §3).
  */

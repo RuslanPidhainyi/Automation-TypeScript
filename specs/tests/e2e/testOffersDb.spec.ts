@@ -8,7 +8,7 @@ import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, signInThroughUi, test
 
 /**
  * e2e layer - closes the UI ⇒ API ⇒ DB triangle for post CRUD
- * (`regression/offers/test_OfferLifecycle.spec.ts` already proves the UI
+ * (`regression/offers/testOfferLifecycle.spec.ts` already proves the UI
  * side). Also exercises the `dbo.Likes.PostId` `OnDelete(DeleteBehavior.Cascade)`
  * FK declared in `AppDbContext.OnModelCreating` against a real row instead of
  * only inferring it from the UI no longer showing a like: `test_user_3` likes

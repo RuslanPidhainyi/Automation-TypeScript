@@ -39,7 +39,7 @@ test.describe(
           // the coverage plan's assumption of an "Unauthorised" toast does not
           // hold for this button in practice, only for an anonymous caller
           // (already covered directly at the API level by
-          // `test_Api.spec.ts`'s `[ID: 18]`).
+          // `testApi.spec.ts`'s `[ID: 18]`).
           const authResponse = page.waitForResponse((r) => r.url().includes(ENDPOINTS.buggy.auth));
           await testErrors.trigger(401);
           expect.soft((await authResponse).status()).toBe(200);
