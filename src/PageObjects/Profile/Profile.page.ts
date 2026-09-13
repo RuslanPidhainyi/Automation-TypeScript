@@ -49,9 +49,7 @@ export class ProfilePage extends BasePage {
     this.addPostPrompt = this.root.locator('.add-post-container');
     this.addPostButton = this.root.locator('button.add-post-button');
     this.emptyState = this.root.locator('.no-posts-container h3');
-    this.cards = this.root.locator(
-      '.posts-container .single-offer app-member-profile-offer-card'
-    );
+    this.cards = this.root.getByTestId('offer-card');
 
     this.gallery = this.root.locator('gallery');
     this.description = this.root.locator('.about-container-row2 p').first();
@@ -100,7 +98,7 @@ export class ProfilePage extends BasePage {
   }
 
   titles(): Promise<string[]> {
-    return this.cards.locator('.info h6').allInnerTexts();
+    return this.cards.getByTestId('offer-card-title').allInnerTexts();
   }
 
   hasNoPosts(): Promise<boolean> {

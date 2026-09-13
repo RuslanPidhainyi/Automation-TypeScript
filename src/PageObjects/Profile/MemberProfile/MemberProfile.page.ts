@@ -1,4 +1,4 @@
-﻿import { Locator, Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { BasePage } from '../../BasePage';
 import {
   MemberSidebarWidget,
@@ -56,7 +56,7 @@ export class MemberProfilePage extends BasePage {
     this.tabs = tabset(this.root.locator('tabset.member-tabset'));
 
     this.emptyState = this.root.locator('.no-posts-container h3');
-    this.cards = this.root.locator('.posts-container .single-offer app-member-offer-card');
+    this.cards = this.root.getByTestId('offer-card');
 
     this.gallery = this.root.locator('gallery');
     this.description = this.root.locator('.about-container-row2 p').first();
@@ -98,8 +98,17 @@ export class MemberProfilePage extends BasePage {
       text: root.locator('.message-content > p'),
       sentAt: root.locator('.message-info small span').first(),
       unreadMarker: root.getByText('(unread)'),
-      readMarker: root.getByText(/^\(read/),
+      // Not anchored to the start: the template renders `(read {{...}})`
+      // with a leading space (" (read 5 minutes ago) "), and unlike string
+      // matching, Playwright tests a RegExp against the raw text content
+      // without trimming it first - `/^\(read/` never matches here.
+      readMarker: root.getByText(/\(read/),
     };
+  }
+
+  /** The bubbles whose text contains `text` - e.g. the message a test just sent. */
+  messageWithText(text: string): Locator {
+    return this.messageBubbles.filter({ hasText: text });
   }
 
   // -------------------------------------------------------------------- tabs
@@ -125,9 +134,17 @@ export class MemberProfilePage extends BasePage {
     await this.messagePanel.waitFor({ state: 'visible' });
   }
 
+  /**
+   * Sends through the SignalR hub and waits until the hub echoes the message
+   * back into the thread (`MessageHub.SendMessage` -> `NewMessage`). Leaving the
+   * page any earlier destroys `member-detail.component`, whose `ngOnDestroy`
+   * stops the hub connection - together with an invocation the server may not
+   * have processed yet, so the message is silently never saved.
+   */
   async sendMessage(text: string): Promise<void> {
     await this.messageInput.fill(text);
     await this.sendButton.click();
+    await this.messageWithText(text).last().waitFor({ state: 'visible' });
   }
 
   // ----------------------------------------------------------------- queries

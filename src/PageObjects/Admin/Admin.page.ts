@@ -13,8 +13,9 @@ export type UserRole = 'Admin' | 'Moderator' | 'Member';
  * assert on `tabs.headings()` rather than assuming both exist.
  *
  * The roles dialog is opened through `BsModalService` and appended to the
- * document body, not to this screen's subtree, hence it is anchored on
- * `bs-modal-container`.
+ * document body, not to this screen's subtree, hence it is anchored on the
+ * `<modal-container>` element ngx-bootstrap renders there (no `bs-` prefix,
+ * despite the service's own name).
  */
 export class AdminPage extends BasePage {
   readonly path = 'admin';
@@ -55,7 +56,7 @@ export class AdminPage extends BasePage {
 
     this.postManagement = this.root.locator('app-post-management');
 
-    this.rolesModal = page.locator('bs-modal-container .modal-content');
+    this.rolesModal = page.locator('modal-container .modal-content');
     this.rolesModalTitle = this.rolesModal.locator('.modal-title');
     this.rolesModalClose = this.rolesModal.locator('.modal-header .btn-close');
     this.rolesModalRows = this.rolesModal.locator('.modal-body .form-check');
@@ -77,8 +78,13 @@ export class AdminPage extends BasePage {
     editRolesButton: Locator;
     roleNames(): Promise<string[]>;
   } {
+    // Scoped to the username cell specifically (`td:first-child`) - the roles
+    // cell can carry the same text (e.g. a single "Admin" role), and an
+    // unscoped `td` match resolves to both rows in strict mode.
     const root = this.userRows.filter({
-      has: this.page.locator('td', { hasText: new RegExp(`^${escapeRegExp(username)}$`, 'i') }),
+      has: this.page.locator('td:first-child', {
+        hasText: new RegExp(`^${escapeRegExp(username)}$`, 'i'),
+      }),
     });
     const roles = root.locator('td').nth(1);
 

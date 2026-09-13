@@ -1,5 +1,6 @@
-﻿import { Locator, Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { BasePage } from '../../BasePage';
+import { LIKE_COLOR } from '../../widgets';
 
 /** Optional sections of a post, each rendered only when its flag is set. */
 export type OfferSection =
@@ -9,16 +10,13 @@ export type OfferSection =
   | 'groceryStore'
   | 'guide';
 
-/**
- * The template has no ids and no test hooks, so the optional blocks are
- * addressed through the positional `info-row-N-left` class the component emits.
- */
-const SECTION_SELECTORS: Record<OfferSection, string> = {
-  localTransport: '.info-row-4-left',
-  entranceFee: '.info-row-5-left',
-  placeStay: '.info-row-6-left',
-  groceryStore: '.info-row-7-left',
-  guide: '.info-row-8-left',
+/** The test id of each optional block in `offer-detail.component.html`. */
+const SECTION_TEST_IDS: Record<OfferSection, string> = {
+  localTransport: 'offer-detail-local-transport',
+  entranceFee: 'offer-detail-entrance-fee',
+  placeStay: 'offer-detail-place-stay',
+  groceryStore: 'offer-detail-grocery-store',
+  guide: 'offer-detail-guide',
 };
 
 /**
@@ -42,7 +40,7 @@ export class OfferDetailsPage extends BasePage {
   readonly likeIcon: Locator;
 
   // Body.
-  /** `Country, City` вЂ“ `Title`. */
+  /** `Country, City` – `Title`. */
   readonly placeInfo: Locator;
   readonly lastVisitedPlace: Locator;
   readonly description: Locator;
@@ -57,19 +55,20 @@ export class OfferDetailsPage extends BasePage {
     super(page);
 
     this.path = `offers/${id ?? ''}`;
-    this.root = page.locator('app-offer-detail .offer-container');
+    this.root = page.getByTestId('offer-detail');
 
-    this.photo = this.root.locator('.photo-container img');
-    this.locationOverlay = this.root.locator('.location-overlay');
-    this.owner = this.root.locator('.user-info');
-    this.ownerName = this.root.locator('.user-info h4');
-    this.ownerAvatar = this.root.locator('.user-info img.users-profile-image');
-    this.onlineBadge = this.root.locator('.user-info .is-online');
-    this.likeIcon = this.root.locator('.icon-buttons i.fa-heart');
+    this.photo = this.root.getByTestId('offer-detail-photo');
+    this.locationOverlay = this.root.getByTestId('offer-detail-location');
+    this.owner = this.root.getByTestId('offer-detail-owner');
+    this.ownerName = this.root.getByTestId('offer-detail-owner-name');
+    this.ownerAvatar = this.root.getByTestId('offer-detail-owner-avatar');
+    // A state rather than an element: the template toggles the class on the avatar's wrapper.
+    this.onlineBadge = this.owner.locator('.is-online');
+    this.likeIcon = this.root.getByTestId('offer-detail-like');
 
-    this.placeInfo = this.root.locator('.place-info');
-    this.lastVisitedPlace = this.root.locator('.last-location-info');
-    this.description = this.root.locator('.desc-info');
+    this.placeInfo = this.root.getByTestId('offer-detail-place');
+    this.lastVisitedPlace = this.root.getByTestId('offer-detail-last-visited');
+    this.description = this.root.getByTestId('offer-detail-description');
 
     this.uniqueElement = this.root;
   }
@@ -78,14 +77,14 @@ export class OfferDetailsPage extends BasePage {
 
   /** Container of one optional block, present only when the flag is set. */
   section(section: OfferSection): Locator {
-    return this.root.locator(SECTION_SELECTORS[section]);
+    return this.root.getByTestId(SECTION_TEST_IDS[section]);
   }
 
   hasSection(section: OfferSection): Promise<boolean> {
     return this.section(section).isVisible();
   }
 
-  /** The `Low price: вЂ¦` / `High price: вЂ¦` lines inside an optional block. */
+  /** The `Low price: …` / `High price: …` lines inside an optional block. */
   sectionPrices(section: OfferSection): Promise<string[]> {
     return this.section(section).locator('h6').allInnerTexts();
   }
@@ -99,7 +98,7 @@ export class OfferDetailsPage extends BasePage {
   /** The template binds `[style.color]="hasLiked() ? 'red' : 'black'"`. */
   async isLiked(): Promise<boolean> {
     const color = await this.likeIcon.evaluate((el) => getComputedStyle(el).color);
-    return color === 'rgb(255, 0, 0)';
+    return color === LIKE_COLOR.liked;
   }
 
   /** Navigates to `/members/{username}`. */

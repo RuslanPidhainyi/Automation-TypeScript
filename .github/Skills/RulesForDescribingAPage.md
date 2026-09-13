@@ -110,12 +110,11 @@ result in a variable, exactly like a locator.
 | Travel-post form | `postForm(root, 'add' \| 'edit')` | AddOffer, EditOffer |
 | ng2-file-upload zone | `fileUploader(root)` | AddOffer, EditProfile |
 | Quick login form | `loginForm(root)` | Login, navigation bar |
-| Validated control | `field` / `fieldByPlaceholder` / `fieldByLabel` | Registration, AddOffer, EditOffer |
+| Validated control | `field` / `fieldByPlaceholder` | Registration, AddOffer, EditOffer |
 
 The biggest win is `postForm`: `add-offer.component.html` and
-`edit-offer.component.html` are ~200 lines of identical template that differ
-only in the `add-post-*` / `edit-post-*` class prefix and the submit caption, so
-the prefix is a parameter and both pages share one descriptor.
+`edit-offer.component.html` are ~200 lines of identical template carrying the
+same `post-form-*` test ids, so both pages share one descriptor.
 
 `OffersPage` and `ListsPage` deliberately restate their three container locators
 rather than sharing a base class — the card internals (the part that actually
@@ -124,40 +123,60 @@ file still reads on its own.
 
 ## Locator strategy
 
-The Angular client has **no `data-testid` attributes**. Preference order:
+The screens the suite leans on most carry **`data-testid` hooks** (see *Test ids
+in the client* below). Preference order:
 
-1. **Role + accessible name** — `getByRole('button', { name: 'Submit' })`.
+1. **`data-testid`** and **role + accessible name**, side by side at the top:
+   `getByTestId('offer-card-like')` for an element the application gives no
+   accessible name or role to (an icon, a table cell, a layout block),
+   `getByRole('button', { name: 'Submit' })` for anything a user would name.
 2. **Exact placeholder** — the shared `app-text-input*` wrappers copy `[label]`
    / `[placeholder]` onto the native input. Matching is `{ exact: true }` so
    `Password` never resolves to `Confirm Password`.
-3. **`[formcontrolname]`** — a *static* attribute in the templates, therefore
-   present in the DOM. Used for the post-form checkboxes.
-4. **Angular element selectors** (`app-offer-card`, `app-member-messages`) as
-   page and widget roots.
-5. **CSS classes** as a last resort, always scoped to a root.
+3. **Static attributes** such as `name` — present in the DOM as written in the
+   template.
+4. **Angular element selectors** (`app-offers-list`, `app-member-messages`) as
+   page roots.
+5. **CSS classes** as a last resort, always scoped to a root — and for a *state*
+   the application expresses only as a class (`.is-online`, `.active`,
+   `.btn-active`).
+
+### Test ids in the client
+
+`kebab-case`, `<component>-<element>`. Playwright's `testIdAttribute` is
+`data-testid` by default, so `playwright.config.ts` sets nothing.
+
+| Template | Test ids | Used by |
+| --- | --- | --- |
+| `nav` | `nav`, `nav-brand`, `nav-link`, `nav-avatar`, `nav-user-menu-toggle`, `nav-user-menu`, `nav-login-form`, `nav-login-username`, `nav-login-password`, `nav-login-submit` | `BasePage` |
+| the three post cards | `offer-card`, `offer-card-photo`, `offer-card-location`, `offer-card-title`, `offer-card-owner`, `offer-card-owner-name`, `offer-card-owner-avatar`, `offer-card-like`, `offer-card-edit`, `offer-card-delete` | `offerCard`; Offers, Lists, Profile, MemberProfile |
+| `add-offer`, `edit-offer` | `post-form`, `post-form-{formControlName}` (e.g. `post-form-min-price-local-trans`), `post-form-toggle-{name}`, `post-form-toggle-{name}-label`, `post-form-type-place-stay`, `post-form-submit`; `add-offer-photo` | `postForm`; AddOffer, EditOffer |
+| `offer-detail` | `offer-detail`, `offer-detail-photo`, `-location`, `-owner`, `-owner-name`, `-owner-avatar`, `-like`, `-place`, `-last-visited`, `-description`, and one per optional section: `offer-detail-local-transport`, `-entrance-fee`, `-place-stay`, `-grocery-store`, `-guide` | OfferDetails |
+| `messages` | `messages-containers`, `messages-empty`, `messages-table`, `message-row`, `message-row-content`, `-counterpart`, `-avatar`, `-sent`, `-delete` | Messages |
+| `photo-editor` | `photo-editor-photo`, `photo-editor-image`, `photo-editor-set-main`, `photo-editor-delete`; `file-drop-zone` (also on `add-offer`) | EditProfile, `fileUploader` |
+
+A new hook goes into the template first and into a page object second; a spec
+never calls `getByTestId` itself (`RulesForWritingTests.md` §1). A test id on a
+wrapper component's host element (`<app-number-input-post data-testid="…">`)
+stays in the DOM, so `field()` finds the control inside it.
 
 Constraints found in the client and handled here:
 
 - `nav.component.html` and `login.component.html` both render `form.login-form`
-  **with a duplicated `id="password"`**, so on `/` the id exists twice. Every
-  login locator is scoped to its form root and keys on `name`: use
-  `loginPage.form` for the card and the `nav*` locators for the bar.
+  **with a duplicated `id="password"`**, so on `/` the id exists twice. The bar is
+  reached through its `nav-login-*` test ids; the login card, which has none yet,
+  is scoped to its form root and keys on `name` (`loginPage.form`).
 - The post-form checkboxes are `opacity: 0` and covered by `span.checkmark`, so
-  `postForm` clicks the wrapping label and reads the state back from the input
-  instead of calling `check()`.
-- `app-number-input-post` renders neither id nor placeholder; those fields are
-  located through the `.form-group` that carries the visible label
-  (`fieldByLabel`).
+  `postForm` clicks the `post-form-toggle-*` label and reads the state back from
+  the checkbox inside it instead of calling `check()`.
 - The like state is observable only as `[style.color]` (`red` / `black`), so
   `isLiked()` compares the computed colour.
 - Tab headings are interpolated (`About {{knownAs}}`), so tab lookups accept a
   `RegExp`.
-- `/offers/:id` has no ids at all; the optional price blocks are addressed by
-  their positional `info-row-N-left` class.
 
-> Adding `data-testid` to the Angular templates would let most of the
-> class-based selectors be replaced by `getByTestId`. Until then, renaming a
-> style class in the client can break a locator here.
+> The login and registration forms, the admin panel, the member sidebar and
+> message thread, and the error pages have no test ids yet: there, renaming a
+> style class in the client can still break a locator.
 
 ## Configuration
 
@@ -176,9 +195,8 @@ use: {
 ## Usage
 
 ```ts
-import { test, expect } from '@playwright/test';
-import { LoginPage, OffersPage, ListsPage, AddOfferPage } from '../src/Pages';
-import { FIXTURES } from '../specs/support';
+import { LoginPage, OffersPage, ListsPage, AddOfferPage } from '../src/PageObjects';
+import { expect, FIXTURES, test } from '../specs/support';
 
 test('a liked post shows up on the Lists page', async ({ page }) => {
   const login = new LoginPage(page);
@@ -214,6 +232,23 @@ test('a new post is published', async ({ page }) => {
 });
 ```
 
+## Assertions stay in specs - page objects expose locators for them
+
+A page object never asserts, but it gives specs something to assert *on*: every element whose state a test
+checks is a `readonly` `Locator` field or a method returning a `Locator` - `section(name)`,
+`messageWithText(text)`, `userRow(username).roles`. Specs then use retrying web-first matchers
+(`RulesForWritingTests.md` §12):
+
+```ts
+await expect(registration.registerButton).toBeDisabled();   // ✔ retries until the state settles
+expect(await registration.isSubmitEnabled()).toBe(false);    // ✘ reads the state once
+```
+
+Methods that return plain values - `isOpen()`, `isSubmitEnabled()`, `cardCount()`, `photo(i).isMain()`,
+`isLiked()` - remain for **flow control inside page objects and helpers** (`firstCardNotOwnedBy`,
+`mainPhotoIndex`), not for assertions. A visual state the application only encodes in a style gets a named
+constant next to its widget, so a spec never spells a colour out: `LIKE_COLOR.liked` for the like icon.
+
 ## Conventions for a new page
 
 1. Create `<Name>/<Name>.page.ts` — the file always gets a folder of its own,
@@ -224,7 +259,8 @@ test('a new post is published', async ({ page }) => {
    scoped to `root`.
 4. Methods describe widgets/sections (`card(title)`, `section(name)`,
    `userRow(username)`), actions (`publish`, `save`) and queries (`titles`,
-   `isEmpty`).
+   `isEmpty`). Anything a spec asserts on is reachable as a `Locator`;
+   value-returning queries are for flow control (see *Assertions stay in specs*).
 5. If a block of markup appears on a second page, move it into `widgets.ts`
    rather than copying the locators.
 6. Register the file in `index.ts`.

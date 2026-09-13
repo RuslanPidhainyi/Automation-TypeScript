@@ -1,14 +1,15 @@
-import { APIRequestContext, Page, expect, test as setup } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import type { TravelApi } from '../../src/api/TravelApi';
 import { LoginPage, OffersPage } from '../../src/PageObjects';
-import { UserDto } from './ApiClient';
 import { AuthRole, CREDENTIALS, STORAGE_STATE } from './auth';
-import { apiUrl, AUTH_STRATEGY, CLIENT_URL } from './env';
+import { AUTH_STRATEGY, CLIENT_URL } from './env';
+import { expect, test as setup } from './fixtures';
 
 /**
- * The `setup` project - runs before `smoke` and `regression` (see
+ * The `setup` project - runs before `smoke`, `regression` and `e2e` (see
  * `dependencies` in playwright.config.ts) and leaves one signed-in
- * `storageState` per role behind, so no other spec has to log in through the
- * UI just to be somebody.
+ * `storageState` per saved persona behind, so no other spec has to log in
+ * through the UI just to be somebody.
  *
  * Two ways to get there, picked by `AUTH_STRATEGY` (env `AUTH_STRATEGY`,
  * defaults to `ui`):
@@ -21,8 +22,8 @@ import { apiUrl, AUTH_STRATEGY, CLIENT_URL } from './env';
  *              sign-in. Faster, but only as trustworthy as the assumption that
  *              the client still stores the session exactly this way.
  *
- * `auth.smoke.spec.ts` still tests login and logout itself; it simply does not
- * use these files.
+ * `specs/tests/smoke/test_Auth.spec.ts` still tests login and logout itself; it
+ * simply does not use these files.
  */
 async function signInViaUi(role: AuthRole, page: Page): Promise<void> {
   const { username, password } = CREDENTIALS[role];
@@ -41,22 +42,16 @@ async function signInViaUi(role: AuthRole, page: Page): Promise<void> {
  * (`_services/account.service.ts`): the raw `account/login` response under
  * `localStorage['user']`, which `AppComponent.ngOnInit` reads back on load.
  */
-async function signInViaToken(role: AuthRole, page: Page, request: APIRequestContext): Promise<void> {
-  const { username, password } = CREDENTIALS[role];
-
-  const response = await request.post(apiUrl('account/login'), { data: { username, password } });
-  if (!response.ok()) {
-    throw new Error(`Login as "${username}" failed: ${response.status()} ${await response.text()}`);
-  }
-  const user = (await response.json()) as UserDto;
+async function signInViaToken(role: AuthRole, page: Page, api: TravelApi): Promise<void> {
+  const user = await api.account.login(CREDENTIALS[role]);
 
   await page.goto(CLIENT_URL);
   await page.evaluate((u) => localStorage.setItem('user', JSON.stringify(u)), user);
 }
 
-async function signInAndSaveState(role: AuthRole, page: Page, request: APIRequestContext): Promise<void> {
+async function signInAndSaveState(role: AuthRole, page: Page, api: TravelApi): Promise<void> {
   if (AUTH_STRATEGY === 'token') {
-    await signInViaToken(role, page, request);
+    await signInViaToken(role, page, api);
   } else {
     await signInViaUi(role, page);
   }
@@ -64,10 +59,10 @@ async function signInAndSaveState(role: AuthRole, page: Page, request: APIReques
   await page.context().storageState({ path: STORAGE_STATE[role] });
 }
 
-setup('authenticate as a member', async ({ page, request }) => {
-  await signInAndSaveState('member', page, request);
+setup('authenticate as a member', async ({ page, api }) => {
+  await signInAndSaveState('member', page, api);
 });
 
-setup('authenticate as an admin', async ({ page, request }) => {
-  await signInAndSaveState('admin', page, request);
+setup('authenticate as an admin and moderator', async ({ page, api }) => {
+  await signInAndSaveState('adminModerator', page, api);
 });

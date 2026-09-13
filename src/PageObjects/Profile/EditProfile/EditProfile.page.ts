@@ -1,4 +1,4 @@
-﻿import { Locator, Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { BasePage } from '../../BasePage';
 import {
   FileUploaderWidget,
@@ -59,7 +59,7 @@ export class EditProfilePage extends BasePage {
     this.saveButton = this.sidebar.saveChangesButton;
 
     const photoEditor = this.root.locator('app-photo-editor');
-    this.photos = photoEditor.locator('.single-photo-editor');
+    this.photos = photoEditor.getByTestId('photo-editor-photo');
     this.uploader = fileUploader(photoEditor);
 
     this.descriptionInput = this.root.locator('textarea[name="description"]');
@@ -81,12 +81,12 @@ export class EditProfilePage extends BasePage {
     isMain(): Promise<boolean>;
   } {
     const root = this.photos.nth(index);
-    const mainButton = root.getByRole('button', { name: 'Main' });
+    const mainButton = root.getByTestId('photo-editor-set-main');
     return {
       root,
       mainButton,
-      image: root.locator('img'),
-      deleteButton: root.locator('button.delete-button'),
+      image: root.getByTestId('photo-editor-image'),
+      deleteButton: root.getByTestId('photo-editor-delete'),
       // The main photo's button is disabled and styled `.btn-active`.
       isMain: () => mainButton.evaluate((el) => el.classList.contains('btn-active')),
     };
@@ -133,5 +133,14 @@ export class EditProfilePage extends BasePage {
 
   photoCount(): Promise<number> {
     return this.photos.count();
+  }
+
+  /** Index of the photo marked main, or `-1` when none is. */
+  async mainPhotoIndex(): Promise<number> {
+    const count = await this.photoCount();
+    for (let i = 0; i < count; i++) {
+      if (await this.photo(i).isMain()) return i;
+    }
+    return -1;
   }
 }

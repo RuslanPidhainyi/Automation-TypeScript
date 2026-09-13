@@ -1,4 +1,4 @@
-﻿import { Locator, Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { BasePage } from '../../BasePage';
 import { FieldWidget, fieldByPlaceholder } from '../../widgets';
 
@@ -14,6 +14,14 @@ export interface RegisterData {
   /** Defaults to `password` when omitted. */
   confirmPassword?: string;
 }
+
+/**
+ * Text fields `register.component.ts` marks `Validators.required`, apart from
+ * the two password fields (which carry validators of their own), in render order.
+ */
+export const REQUIRED_REGISTER_FIELDS = ['username', 'knownAs', 'dateOfBirth', 'city', 'country'] as const;
+
+export type RequiredRegisterField = (typeof REQUIRED_REGISTER_FIELDS)[number];
 
 /**
  * Registration - `app-register`, rendered inside the login page once the
@@ -47,6 +55,13 @@ export class RegistrationPage extends BasePage {
   readonly registerButton: Locator;
   readonly cancelButton: Locator;
 
+  /**
+   * ngx-bootstrap's `bsDatepicker` popup for `dateOfBirth`. It is appended to
+   * `document.body` rather than into this form, hence a page-level locator
+   * instead of one scoped to `root`.
+   */
+  readonly dateOfBirthCalendar: Locator;
+
   readonly uniqueElement: Locator;
 
   constructor(page: Page) {
@@ -69,6 +84,8 @@ export class RegistrationPage extends BasePage {
     this.serverErrors = this.root.locator('.register-errors-container li');
     this.registerButton = this.root.locator('button.register-btn');
     this.cancelButton = this.root.locator('button.cancel-btn');
+
+    this.dateOfBirthCalendar = page.locator('bs-datepicker-container');
 
     this.uniqueElement = this.root;
   }
@@ -115,6 +132,21 @@ export class RegistrationPage extends BasePage {
     return this;
   }
 
+  /**
+   * Fills the form from `data` but leaves `omitted` empty - for checking one
+   * required validator at a time. Unlike `fill()`, the datepicker popup is not
+   * dismissed after the date of birth.
+   */
+  async fillAllExcept(data: RegisterData, omitted: RequiredRegisterField): Promise<this> {
+    await this.genderRadio(data.gender).check();
+    for (const name of REQUIRED_REGISTER_FIELDS) {
+      if (name !== omitted) await this[name].fill(data[name]);
+    }
+    await this.password.fill(data.password);
+    await this.confirmPassword.fill(data.confirmPassword ?? data.password);
+    return this;
+  }
+
   async submit(): Promise<void> {
     await this.registerButton.click();
   }
@@ -135,5 +167,23 @@ export class RegistrationPage extends BasePage {
 
   serverErrorTexts(): Promise<string[]> {
     return this.serverErrors.allInnerTexts();
+  }
+
+  // ------------------------------------------------------------- date picker
+
+  /** Opens the `dateOfBirth` calendar popup. */
+  async openDateOfBirthCalendar(): Promise<void> {
+    await this.dateOfBirth.control.click();
+    await this.dateOfBirthCalendar.waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Clicks a day cell (by its number) in the currently displayed month of the
+   * `dateOfBirth` calendar. A disabled day (outside `[minDate, maxDate]`)
+   * ignores the click, so this is also how a disabled day is asserted - via
+   * the input staying unchanged rather than a CSS class.
+   */
+  async clickCalendarDay(day: number): Promise<void> {
+    await this.dateOfBirthCalendar.getByText(`${day}`, { exact: true }).first().click();
   }
 }
