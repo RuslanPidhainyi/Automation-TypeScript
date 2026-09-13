@@ -29,7 +29,7 @@ export class ListsPage extends BasePage {
     this.root = page.locator('app-lists');
     this.heading = this.root.locator('.title-section h1');
     this.emptyState = this.root.locator('.no-posts-container h3');
-    this.cards = this.root.locator('.offers-container .single-offer app-offer-card');
+    this.cards = this.root.getByTestId('offer-card');
 
     this.uniqueElement = this.heading;
   }
@@ -51,7 +51,7 @@ export class ListsPage extends BasePage {
   }
 
   titles(): Promise<string[]> {
-    return this.cards.locator('.info h6').allInnerTexts();
+    return this.cards.getByTestId('offer-card-title').allInnerTexts();
   }
 
   isEmpty(): Promise<boolean> {

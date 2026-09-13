@@ -26,7 +26,7 @@ export class OffersPage extends BasePage {
     this.root = page.locator('app-offers-list');
     this.heading = this.root.locator('.title-section h1');
     this.emptyState = this.root.locator('.no-posts-container h3');
-    this.cards = this.root.locator('.offers-container .single-offer app-offer-card');
+    this.cards = this.root.getByTestId('offer-card');
 
     this.uniqueElement = this.heading;
   }
@@ -53,9 +53,26 @@ export class OffersPage extends BasePage {
     return this.cards.count();
   }
 
+  /**
+   * The first card whose owner is not `username`, with its title - e.g. a post
+   * that member is allowed to like (`LikesController.ToggleLike` refuses your
+   * own post). `undefined` when every card belongs to `username`.
+   */
+  async firstCardNotOwnedBy(username: string): Promise<{ card: OfferCardWidget; title: string } | undefined> {
+    const total = await this.cardCount();
+    for (let i = 0; i < total; i++) {
+      const card = this.cardAt(i);
+      const owner = (await card.ownerName.innerText()).trim();
+      if (owner.toLowerCase() !== username.toLowerCase()) {
+        return { card, title: (await card.title.innerText()).trim() };
+      }
+    }
+    return undefined;
+  }
+
   /** Titles in render order - the template reverses the service array. */
   titles(): Promise<string[]> {
-    return this.cards.locator('.info h6').allInnerTexts();
+    return this.cards.getByTestId('offer-card-title').allInnerTexts();
   }
 
   isEmpty(): Promise<boolean> {

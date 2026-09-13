@@ -1,13 +1,14 @@
 import { APIRequestContext, Page, expect } from '@playwright/test';
+import { TravelApi } from '../../src/api/TravelApi';
 import { LoginPage, OffersPage } from '../../src/PageObjects';
-import { ApiClient, UserDto } from './ApiClient';
-import { CLIENT_URL, Credentials } from './env';
+import type { Credentials } from '../../src/models';
+import { CLIENT_URL } from './env';
 
 /**
  * The two ways a spec can sign a user in without relying on `auth.setup.ts`'s
  * saved `storageState` - useful for the health probes, which must be able to
- * run before `setup` and against credentials that have no role/storageState
- * of their own (`TEST_USER_2`..`TEST_USER_5`). Both end the same way: prove
+ * run before `setup`, and for every test account without a storageState of its
+ * own (only `test_user_2` and `test_user_5` have one). Both end the same way: prove
  * the session took by loading `/offers` and reading the username off the nav
  * bar.
  */
@@ -32,9 +33,7 @@ export async function signInWithToken(
   request: APIRequestContext,
   user: Credentials,
 ): Promise<void> {
-  const response = await new ApiClient(request).login(user);
-  expect(response.status()).toBe(200);
-  const loggedInUser = (await response.json()) as UserDto;
+  const loggedInUser = await new TravelApi(request).account.login(user);
 
   await page.goto(CLIENT_URL);
   await page.evaluate((u) => localStorage.setItem('user', JSON.stringify(u)), loggedInUser);

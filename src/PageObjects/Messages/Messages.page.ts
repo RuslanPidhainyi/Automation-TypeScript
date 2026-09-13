@@ -28,19 +28,24 @@ export class MessagesPage extends BasePage {
     super(page);
 
     this.root = page.locator('app-messages');
-    this.containerButtons = this.root.locator('.buttons-container');
-    this.emptyState = this.root.locator('.no-messages-container h3');
-    this.table = this.root.locator('.users-messages-container table');
+    this.containerButtons = this.root.getByTestId('messages-containers');
+    this.emptyState = this.root.getByTestId('messages-empty');
+    this.table = this.root.getByTestId('messages-table');
     this.headers = this.table.locator('thead th');
-    this.rows = this.table.locator('tbody tr.message-row');
+    this.rows = this.table.getByTestId('message-row');
 
     this.uniqueElement = this.containerButtons;
   }
 
   // ----------------------------------------------------------------- widgets
 
+  /**
+   * ngx-bootstrap's `btnRadio` renders a `<button>` element but overrides its
+   * accessible role to `radio` (it is one option of a radio group), so the
+   * accessible name must be looked up under that role, not `button`.
+   */
   containerButton(container: MessageContainer): Locator {
-    return this.containerButtons.getByRole('button', { name: container, exact: true });
+    return this.containerButtons.getByRole('radio', { name: container, exact: true });
   }
 
   /** One row of the table, addressed by position. */
@@ -51,16 +56,16 @@ export class MessagesPage extends BasePage {
   /** The row whose message column contains `text`. */
   row(text: string): MessageRow {
     return this.describeRow(
-      this.rows.filter({ has: this.page.locator('.table-messages', { hasText: text }) })
+      this.rows.filter({ has: this.page.getByTestId('message-row-content').filter({ hasText: text }) })
     );
   }
 
   /** All rows exchanged with `username`. */
   rowsWith(username: string): Locator {
     return this.rows.filter({
-      has: this.page.locator('.table-from-to strong', {
-        hasText: new RegExp(`^${username}$`, 'i'),
-      }),
+      has: this.page
+        .getByTestId('message-row-counterpart')
+        .filter({ hasText: new RegExp(`^${username}$`, 'i') }),
     });
   }
 
@@ -83,7 +88,7 @@ export class MessagesPage extends BasePage {
   }
 
   messageTexts(): Promise<string[]> {
-    return this.rows.locator('.table-messages').allInnerTexts();
+    return this.rows.getByTestId('message-row-content').allInnerTexts();
   }
 
   isEmpty(): Promise<boolean> {
@@ -91,15 +96,17 @@ export class MessagesPage extends BasePage {
   }
 
   private describeRow(root: Locator): MessageRow {
+    const content = root.getByTestId('message-row-content');
+    const deleteButton = root.getByTestId('message-row-delete');
     return {
       root,
-      content: root.locator('.table-messages'),
-      counterpart: root.locator('.table-from-to strong'),
-      counterpartAvatar: root.locator('.table-from-to img'),
-      sentAt: root.locator('.table-sent'),
-      deleteButton: root.locator('button.btn-delete'),
-      open: () => root.locator('.table-messages').click(),
-      delete: () => root.locator('button.btn-delete').click(),
+      content,
+      counterpart: root.getByTestId('message-row-counterpart'),
+      counterpartAvatar: root.getByTestId('message-row-avatar'),
+      sentAt: root.getByTestId('message-row-sent'),
+      deleteButton,
+      open: () => content.click(),
+      delete: () => deleteButton.click(),
     };
   }
 }

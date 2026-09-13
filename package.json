@@ -8,10 +8,17 @@
     "test:health": "node scripts/run-tests.js --project=health",
     "test:smoke": "node scripts/run-tests.js --project=smoke",
     "test:regression": "node scripts/run-tests.js --project=regression-chromium --project=regression-firefox --project=regression-webkit",
+    "test:e2e": "node scripts/run-tests.js --project=e2e",
+    "test:api": "node scripts/run-tests.js --project=api",
+    "test:database": "node scripts/run-tests.js --project=database",
     "test:headed": "node scripts/run-tests.js --headed",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "check": "npm run typecheck && npm run lint",
+    "prepare": "husky",
     "report": "playwright show-report"
   },
   "keywords": [
@@ -25,8 +32,25 @@
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "1.61.0",
+    "@types/mssql": "^12.3.0",
     "@types/node": "^18.19.130",
     "dotenv": "^17.4.2",
-    "typescript": "^5.9.3"
+    "eslint": "^10.10.0",
+    "eslint-plugin-playwright": "^2.11.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
+    "mssql": "^12.7.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "zod": "^4.6.2"
+  },
+  "lint-staged": {
+    "*.ts": "eslint --max-warnings=0"
+  },
+  "allowScripts": {
+    "msnodesqlv8@5.3.0": true
+  },
+  "optionalDependencies": {
+    "msnodesqlv8": "5.3.0"
   }
 }

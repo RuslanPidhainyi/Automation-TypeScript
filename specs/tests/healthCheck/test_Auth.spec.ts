@@ -1,10 +1,10 @@
-import { test } from '@playwright/test';
 import {
   idTag,
   LAYER_TAG,
   MUTATION_TAG,
   signInThroughUi,
   signInWithToken,
+  test,
   TEST_USER_1,
   TEST_USER_2,
   TEST_USER_3,

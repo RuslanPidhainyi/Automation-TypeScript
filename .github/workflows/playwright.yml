@@ -1,27 +1,141 @@
 name: Playwright Tests
+
+# The whole stack on the runner: SQL Server as a service container, the API and the client started by
+# playwright.config.ts's webServer (START_STACK=1). One `playwright test` run walks the layers in pipeline order -
+# seed-users -> health -> api + database -> setup -> smoke + e2e - and at night regression joins in three browsers.
+# The secrets and variables this needs are listed in README.md, "CI".
 on:
   push:
-    branches: [ main, master ]
+    branches: [master]
   pull_request:
-    branches: [ main, master ]
+  schedule:
+    - cron: '0 2 * * *' # nightly, with regression
+  workflow_dispatch:
+    inputs:
+      regression:
+        description: Run regression in three browsers as well
+        type: boolean
+        default: false
+
+concurrency:
+  group: playwright-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    timeout-minutes: 60
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: 'Y'
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+        ports:
+          - 1433:1433
+        # The API migrates and seeds on startup and gives up on a database that is not answering yet.
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      CI: 'true'
+      RUN_REGRESSION: ${{ github.event_name == 'schedule' || inputs.regression == true }}
+      START_STACK: '1'
+      APP_DIR: app
+      # No mkcert certificate on the runner: the client is served over HTTP, the API over HTTPS with a dev certificate.
+      BASE_URL: http://localhost:4200
+      TIMEOUT_MULTIPLIER: '2'
+      NG_CLI_ANALYTICS: 'false'
+
+      # The suite's own connection to the database (src/helpers/db/mssql.helper.ts).
+      DB_DRIVER: tedious
+      DB_SERVER: localhost
+      DB_PORT: '1433'
+      DB_NAME: TravelApp
+      DB_USER: sa
+      DB_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+
+      # The API's configuration - appsettings*.json are not in the application repository.
+      Data__Connection: Server=localhost,1433;Database=TravelApp;User Id=sa;Password=${{ secrets.MSSQL_SA_PASSWORD }};TrustServerCertificate=True
+      TokenKey: ${{ secrets.TOKEN_KEY }}
+      CloudinarySettings__CloudName: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CloudinarySettings__ApiKey: ${{ secrets.CLOUDINARY_API_KEY }}
+      CloudinarySettings__ApiSecret: ${{ secrets.CLOUDINARY_API_SECRET }}
+
+      # Accounts. seed-users registers the five test accounts and grants their roles as the seeded admin.
+      ADMIN_USER: ${{ secrets.ADMIN_USER }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      TEST_USER_1: ${{ secrets.TEST_USER_1 }}
+      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
+      TEST_USER_2: ${{ secrets.TEST_USER_2 }}
+      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
+      TEST_USER_3: ${{ secrets.TEST_USER_3 }}
+      TEST_PASSWORD_3: ${{ secrets.TEST_PASSWORD_3 }}
+      TEST_USER_4: ${{ secrets.TEST_USER_4 }}
+      TEST_PASSWORD_4: ${{ secrets.TEST_PASSWORD_4 }}
+      TEST_USER_5: ${{ secrets.TEST_USER_5 }}
+      TEST_PASSWORD_5: ${{ secrets.TEST_PASSWORD_5 }}
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - uses: actions/checkout@v4
+
+      - name: Check out the application
+        uses: actions/checkout@v4
+        with:
+          repository: RuslanPidhainyi/EW-TravelApp-.Net8-Angular17
+          ref: ${{ vars.APP_REF || 'main' }}
+          path: app
+          token: ${{ secrets.APP_REPO_TOKEN || github.token }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            app/Client/package-lock.json
+
+      - name: Give Kestrel an HTTPS development certificate
+        run: dotnet dev-certs https
+
+      - name: Install the client
+        working-directory: app/Client
+        run: npm ci
+
+      - name: Install the suite
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Firefox and WebKit
+        if: env.RUN_REGRESSION == 'true'
+        run: npx playwright install --with-deps firefox webkit
+
+      - name: seed-users, health, api, database, setup, smoke, e2e
+        if: env.RUN_REGRESSION != 'true'
+        run: npx playwright test --project=smoke --project=e2e
+
+      - name: seed-users, health, api, database, setup, smoke, e2e, regression in three browsers
+        if: env.RUN_REGRESSION == 'true'
+        run: >-
+          npx playwright test --project=smoke --project=e2e
+          --project=regression-chromium --project=regression-firefox --project=regression-webkit
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            reports/
+            test-results/
+          retention-days: 30

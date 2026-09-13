@@ -1,4 +1,5 @@
 import { Locator } from '@playwright/test';
+import { dropFiles } from '../helpers/dragAndDrop.helper';
 
 /**
  * Widgets - the blocks of markup the Angular client renders on more than one
@@ -18,6 +19,11 @@ import { Locator } from '@playwright/test';
  *   validated field -> Registration, AddOffer, EditOffer
  */
 
+/** The `data-testid` spelling of a camelCase name, e.g. `minPriceLocalTrans` -> `min-price-local-trans`. */
+function testIdOf(name: string): string {
+  return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
 // ---------------------------------------------------------------- login form
 
 export interface LoginFormWidget {
@@ -34,7 +40,8 @@ export interface LoginFormWidget {
  * `form.login-form` - byte-for-byte the same markup in the navigation bar and
  * on the login page. Both render `id="password"`, so the id is duplicated in
  * the DOM whenever a signed-out visitor is on `/`; every locator below is
- * scoped to the form root and keys on `name`.
+ * scoped to the form root and keys on `name`. (The bar's copy also carries
+ * `nav-login-*` test ids, which `BasePage` uses.)
  */
 export function loginForm(root: Locator): LoginFormWidget {
   const usernameInput = root.locator('input[name="username"]');
@@ -81,6 +88,9 @@ export interface FieldWidget {
  *     <i class="error-icon">
  *     <div class="invalid-feedback">Please enter a {{label}}</div>
  *   </div>
+ *
+ * `root` is anything around one such skeleton - the wrapper's host element
+ * (`post-form-*` test ids) or the `.single-input` itself.
  */
 export function field(root: Locator): FieldWidget {
   const control = root.locator('input, textarea, select').first();
@@ -100,9 +110,10 @@ export function field(root: Locator): FieldWidget {
 }
 
 /**
- * Locates a field by the placeholder of its control. The wrappers copy
- * `[label]` / `[placeholder]` onto the native input, and matching is exact so
- * `Password` never resolves to `Confirm Password`.
+ * Locates a field by the placeholder of its control - for the forms without
+ * test ids (registration). The wrappers copy `[label]` / `[placeholder]` onto
+ * the native input, and matching is exact so `Password` never resolves to
+ * `Confirm Password`.
  */
 export function fieldByPlaceholder(scope: Locator, placeholder: string): FieldWidget {
   return field(
@@ -112,16 +123,17 @@ export function fieldByPlaceholder(scope: Locator, placeholder: string): FieldWi
   );
 }
 
-/**
- * Locates a field by the visible label of the `.form-group` around it.
- * `app-number-input-post` renders neither an id nor a placeholder, so the label
- * is the only handle the DOM offers.
- */
-export function fieldByLabel(scope: Locator, label: string): FieldWidget {
-  return field(scope.locator('.form-group').filter({ hasText: label }).locator('.single-input'));
-}
-
 // ----------------------------------------------------------------- offer card
+
+/**
+ * The like icon's computed colour - the templates bind
+ * `[style.color]="hasLiked() ? 'red' : 'black'"`. Specs assert on it with
+ * `toHaveCSS('color', LIKE_COLOR.liked)` rather than spelling the colour out.
+ */
+export const LIKE_COLOR = {
+  liked: 'rgb(255, 0, 0)',
+  notLiked: 'rgb(0, 0, 0)',
+} as const;
 
 export interface OfferCardWidget {
   root: Locator;
@@ -151,34 +163,35 @@ export interface OfferCardWidget {
 
 /**
  * The post card, in its three flavours. `app-offer-card`,
- * `app-member-offer-card` and `app-member-profile-offer-card` share the photo,
- * the location overlay and the title, and differ only in the icons they add -
- * hence one descriptor with every locator, of which a given flavour resolves
- * the subset its template renders.
+ * `app-member-offer-card` and `app-member-profile-offer-card` carry the same
+ * `offer-card-*` test ids and differ only in which icons they render - hence one
+ * descriptor with every locator, of which a given flavour resolves the subset
+ * its template renders. `root` is the `offer-card` element.
  */
 export function offerCard(root: Locator): OfferCardWidget {
-  const photo = root.locator('.photo-container img');
-  const owner = root.locator('.user-info');
-  const likeIcon = root.locator('.icon-buttons i.fa-heart');
+  const photo = root.getByTestId('offer-card-photo');
+  const owner = root.getByTestId('offer-card-owner');
+  const likeIcon = root.getByTestId('offer-card-like');
 
   return {
     root,
     photo,
     owner,
     likeIcon,
-    location: root.locator('.location-overlay'),
-    title: root.locator('.info h6'),
-    ownerName: root.locator('.user-info h5'),
-    ownerAvatar: root.locator('.user-info img.users-profile-image'),
-    onlineBadge: root.locator('.user-info .is-online'),
-    editIcon: root.locator('.icon-buttons i.fa-pencil-square-o'),
-    deleteIcon: root.locator('.icon-buttons i.fa-trash'),
+    location: root.getByTestId('offer-card-location'),
+    title: root.getByTestId('offer-card-title'),
+    ownerName: root.getByTestId('offer-card-owner-name'),
+    ownerAvatar: root.getByTestId('offer-card-owner-avatar'),
+    // A state rather than an element: the template toggles the class on the avatar's wrapper.
+    onlineBadge: owner.locator('.is-online'),
+    editIcon: root.getByTestId('offer-card-edit'),
+    deleteIcon: root.getByTestId('offer-card-delete'),
     openDetails: () => photo.click(),
     openOwner: () => owner.click(),
     toggleLike: () => likeIcon.click(),
     async isLiked() {
       const color = await likeIcon.evaluate((el) => getComputedStyle(el).color);
-      return color === 'rgb(255, 0, 0)';
+      return color === LIKE_COLOR.liked;
     },
   };
 }
@@ -282,37 +295,45 @@ export interface FileUploaderWidget {
   uploadAllButton: Locator;
   cancelAllButton: Locator;
   removeAllButton: Locator;
+  /** Only works if the zone renders a backing `<input type="file">` - see `dropFiles`. */
   selectFiles(...files: string[]): Promise<void>;
+  /**
+   * Simulates an HTML5 file drop onto `dropZone`. `[ng2FileDrop]` only ever
+   * listens for the native `drop` event (`add-offer.component.html`,
+   * `photo-editor.component.html` - neither renders an `<input>`), so this is
+   * the only way to queue a file on either screen; `selectFiles` has nothing
+   * to target there.
+   */
+  dropFiles(...files: string[]): Promise<void>;
   queuedFileNames(): Promise<string[]>;
 }
 
 /**
- * The ng2-file-upload drop zone and queue. `add-offer` renders only
- * "Remove all"; `photo-editor` renders all three buttons.
+ * The ng2-file-upload drop zone (`file-drop-zone`) and queue. `add-offer`
+ * renders only "Remove all"; `photo-editor` renders all three buttons.
  */
 export function fileUploader(root: Locator): FileUploaderWidget {
   const fileInput = root.locator('input[type="file"]');
+  const dropZone = root.getByTestId('file-drop-zone');
   const queueRows = root.locator('table.table tbody tr');
 
   return {
     root,
     fileInput,
     queueRows,
-    dropZone: root.locator('.my-drop-zone'),
+    dropZone,
     queueLength: root.getByText(/Queue length:/),
     progressBar: root.locator('.progress .progress-bar'),
     uploadAllButton: root.getByRole('button', { name: 'Upload all' }),
     cancelAllButton: root.getByRole('button', { name: 'Cancel all' }),
     removeAllButton: root.getByRole('button', { name: 'Remove all' }),
     selectFiles: (...files) => fileInput.setInputFiles(files),
+    dropFiles: (...files) => dropFiles(dropZone, ...files),
     queuedFileNames: () => queueRows.locator('td strong').allInnerTexts(),
   };
 }
 
 // ----------------------------------------------------------------- post form
-
-/** `add-offer` and `edit-offer` differ only in this CSS class prefix. */
-export type PostFormVariant = 'add' | 'edit';
 
 /** Checkboxes that reveal an extra block of price fields. */
 export type PostToggle =
@@ -323,6 +344,18 @@ export type PostToggle =
   | 'guide';
 
 export type AccommodationType = 'Camping' | 'Hotel' | 'Hostel';
+
+/** Fields `add-offer.component.ts` marks `Validators.required` - `Share post` stays disabled without any of them. */
+export const REQUIRED_POST_FIELDS = [
+  'title',
+  'locationCountry',
+  'locationCity',
+  'lastCountry',
+  'lastRegion',
+  'currency',
+] as const;
+
+export type RequiredPostField = (typeof REQUIRED_POST_FIELDS)[number];
 
 export interface PostFormData {
   title?: string;
@@ -363,7 +396,7 @@ export interface PostFormWidget {
   minPriceGuide: FieldWidget;
   maxPriceGuide: FieldWidget;
 
-  /** `Share post` in the add variant, `Edit post` in the edit variant. */
+  /** `Share post` on `add-offer`, `Edit post` on `edit-offer`. */
   submitButton: Locator;
 
   checkbox(toggle: PostToggle): Locator;
@@ -380,26 +413,25 @@ export interface PostFormWidget {
 }
 
 /**
- * The travel-post form. The Angular templates of `add-offer` and `edit-offer`
- * are a copy of each other apart from the `add-post-*` / `edit-post-*` class
- * prefix and the submit caption, so the variant is a parameter.
+ * The travel-post form. `add-offer` and `edit-offer` render a copy of the same
+ * template and carry the same test ids, so `root` - the `post-form` element - is
+ * all a page supplies:
+ *
+ *   post-form-{formControlName}       a field's wrapper, e.g. post-form-min-price-local-trans
+ *   post-form-toggle-{name}           the clickable label around a checkbox
+ *   post-form-toggle-{name}-label     the question next to it
+ *   post-form-type-place-stay         the accommodation select
+ *   post-form-submit
  *
  * The native checkbox is `opacity: 0` and covered by `span.checkmark`, so the
  * wrapping label is clicked and the state is read back from the input.
  */
-export function postForm(root: Locator, variant: PostFormVariant): PostFormWidget {
-  const prefix = `${variant}-post`;
+export function postForm(root: Locator): PostFormWidget {
+  const control = (formControlName: string) => field(root.getByTestId(`post-form-${testIdOf(formControlName)}`));
 
-  const toggleWrapper = (toggle: PostToggle) =>
-    root.locator(`.${prefix}-checkbox-wrapper`).filter({
-      has: root.page().locator(`input[formcontrolname="${toggle}"]`),
-    });
+  const checkboxControl = (toggle: PostToggle) => root.getByTestId(`post-form-toggle-${testIdOf(toggle)}`);
 
-  const checkbox = (toggle: PostToggle) =>
-    toggleWrapper(toggle).locator('input[type="checkbox"]');
-
-  const checkboxControl = (toggle: PostToggle) =>
-    toggleWrapper(toggle).locator(`.${prefix}-checkbox-container`);
+  const checkbox = (toggle: PostToggle) => checkboxControl(toggle).getByRole('checkbox');
 
   const isToggled = (toggle: PostToggle) => checkbox(toggle).isChecked();
 
@@ -412,32 +444,32 @@ export function postForm(root: Locator, variant: PostFormVariant): PostFormWidge
   const widget: PostFormWidget = {
     root,
 
-    title: fieldByPlaceholder(root, 'Place name'),
-    locationCountry: fieldByPlaceholder(root, 'The country of this place'),
-    locationCity: fieldByPlaceholder(root, 'The region of this place'),
-    lastCountry: fieldByPlaceholder(root, 'Last visited country before the journey'),
-    lastRegion: fieldByPlaceholder(root, 'Last visited city before the journey'),
-    currency: fieldByPlaceholder(root, 'Currency'),
-    description: fieldByPlaceholder(root, 'Add description...'),
+    title: control('title'),
+    locationCountry: control('locationCountry'),
+    locationCity: control('locationCity'),
+    lastCountry: control('lastCountry'),
+    lastRegion: control('lastRegion'),
+    currency: control('currency'),
+    description: control('description'),
 
-    minPriceLocalTransport: fieldByLabel(root, 'Low price service'),
-    maxPriceLocalTransport: fieldByLabel(root, 'High price service'),
-    travelTime: fieldByLabel(root, 'Approximately, the journey took'),
-    minPriceEntranceFee: fieldByLabel(root, 'Low price for entrance'),
-    maxPriceEntranceFee: fieldByLabel(root, 'High price for entrance'),
-    minPricePlaceStay: fieldByLabel(root, 'Low price for accommodation'),
-    maxPricePlaceStay: fieldByLabel(root, 'High price for accommodation'),
-    accommodationTypeSelect: root.locator('#typePlaceStay'),
-    minPriceGroceryStore: fieldByLabel(root, 'Low price for grocery'),
-    maxPriceGroceryStore: fieldByLabel(root, 'High price for grocery'),
-    minPriceGuide: fieldByLabel(root, 'Low price for services'),
-    maxPriceGuide: fieldByLabel(root, 'High price for services'),
+    minPriceLocalTransport: control('minPriceLocalTrans'),
+    maxPriceLocalTransport: control('maxPriceLocalTrans'),
+    travelTime: control('travelTime'),
+    minPriceEntranceFee: control('minPriceEntrFee'),
+    maxPriceEntranceFee: control('maxPriceEntrFee'),
+    minPricePlaceStay: control('minPricePlaceStay'),
+    maxPricePlaceStay: control('maxPricePlaceStay'),
+    accommodationTypeSelect: root.getByTestId('post-form-type-place-stay'),
+    minPriceGroceryStore: control('minPriceGroceryStore'),
+    maxPriceGroceryStore: control('maxPriceGroceryStore'),
+    minPriceGuide: control('minPriceGuide'),
+    maxPriceGuide: control('maxPriceGuide'),
 
-    submitButton: root.locator(`button.${prefix}-btn`),
+    submitButton: root.getByTestId('post-form-submit'),
 
     checkbox,
     checkboxControl,
-    checkboxLabel: (toggle) => toggleWrapper(toggle).locator(`.${prefix}-checkbox-label`),
+    checkboxLabel: (toggle) => root.getByTestId(`post-form-toggle-${testIdOf(toggle)}-label`),
     isToggled,
     setToggle,
 

@@ -13,6 +13,21 @@ export const LAYER_TAG = {
   healthCheck: '@healthCheck',
   smoke: '@smoke',
   regression: '@regression',
+  /**
+   * `specs/tests/e2e/` - proves a UI action is actually committed to the
+   * database, not just echoed back by the API. See `TestCoveragePlan.md` §7.
+   */
+  e2e: '@e2e',
+  /**
+   * `specs/tests/api/` - the API on its own: which callers each route lets
+   * through, and how it answers a request it refuses. No browser, no client.
+   */
+  api: '@api',
+  /**
+   * `specs/tests/database/` - the schema and the invariants the data must keep,
+   * read straight from SQL Server. Neither the API nor the client is involved.
+   */
+  database: '@database',
 } as const;
 
 export type LayerTag = (typeof LAYER_TAG)[keyof typeof LAYER_TAG];

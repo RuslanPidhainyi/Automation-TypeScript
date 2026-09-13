@@ -1,17 +1,21 @@
 import path from 'path';
+import type { Credentials } from '../../src/models';
 import { baseUrl } from '../../src/PageObjects';
+
+export type { Credentials } from '../../src/models';
+export { apiUrl } from '../../src/api/HttpClient';
 
 /**
  * Everything the specs need to know about *where* the application lives and
- * *who* they may sign in as. Values come from `.env` (loaded by
- * playwright.config.ts); the defaults describe a stock local run, so the suite
- * still works on a machine without a `.env` file.
+ * *who* they may sign in as. Values come from `.env` in the project root - the
+ * only env file - loaded by `src/helpers/loadEnv.helper.ts`.
+ *
+ * Specs sign in only as the test accounts `TEST_USER_1`..`TEST_USER_5` below
+ * (also available by role as `PERSONAS`, `personas.ts`). The seeded accounts
+ * `.env` also lists (Lisa, Bob, admin - `API/Data/Seed.cs`) are kept for manual
+ * runs; no spec signs in as them, so the suite never leaves data behind on the
+ * accounts a real visitor sees.
  */
-
-export interface Credentials {
-  username: string;
-  password: string;
-}
 
 /** How the `setup` project signs in - see `auth.setup.ts`. */
 export type AuthStrategy = 'ui' | 'token';
@@ -28,71 +32,51 @@ export const AUTH_STRATEGY: AuthStrategy = process.env.AUTH_STRATEGY === 'token'
 export const CLIENT_URL = baseUrl();
 
 /**
- * `https://localhost:5001/api/` - the same value the client compiles in
- * (`Client/src/environments/environment.development.ts` -> `apiUrl`), kept with
- * a trailing slash so `apiUrl('account/login')` reads like the Angular services.
+ * Reads a key that must be set in `.env`. Fails as soon as the specs load,
+ * naming the missing key, instead of falling back to a hard-coded default that
+ * may not exist in the target database.
  */
-export const API_URL = (process.env.API_URL ?? 'https://localhost:5001/api/').replace(/\/*$/, '/');
-
-/** Builds an absolute API URL from an endpoint, e.g. `posts` or `buggy/auth`. */
-export function apiUrl(endpoint: string): string {
-  return `${API_URL}${endpoint.replace(/^\/+/, '')}`;
+function requireEnv(key: string): string {
+  const value = process.env[key];
+  if (!value) {
+    throw new Error(`${key} is not set - add it to .env in the project root`);
+  }
+  return value;
 }
 
-/**
- * Seeded member - `API/Data/UserSeedData.json`, created by `Seed.SeedUsers`
- * with the password below and the `Member` role.
- *
- * The seed lower-cases every username on insert (`user.UserName!.ToLower()`),
- * so the API answers `lisa` even when the spec signs in as `Lisa`; compare
- * usernames case-insensitively.
- */
-export const MEMBER: Credentials = {
-  username: process.env.MEMBER_USER ?? 'Lisa',
-  password: process.env.MEMBER_PASSWORD ?? 'Pa$$w0rd2024',
-};
+function credentialsFromEnv(usernameKey: string, passwordKey: string): Credentials {
+  return { username: requireEnv(usernameKey), password: requireEnv(passwordKey) };
+}
 
-/** Seeded administrator - `API/Data/Seed.cs`, holds `Admin` *and* `Moderator`. */
-export const ADMIN: Credentials = {
-  username: process.env.ADMIN_USER ?? 'admin',
-  password: process.env.ADMIN_PASSWORD ?? 'Admin2024',
-};
-
-/**
- * Accounts used by the sign-in health probes, one per role, kept distinct
- * from `MEMBER` so a UI/token pair of tests never share a session. Not part
- * of `UserSeedData.json` - must exist in the target database already.
+/*
+ * The test accounts, one per role combination. They are not part of
+ * `UserSeedData.json` and must already exist in the target database, which
+ * stores usernames lower-cased - compare them case-insensitively.
  */
 
-/** No role. */
-export const TEST_USER_1: Credentials = {
-  username: process.env.TEST_USER_1 ?? 'test_user_1',
-  password: process.env.TEST_PASSWORD_1 ?? 'testUser1#1',
-};
+/** No role. Also the account the empty-state checks rely on: it never likes or publishes anything. */
+export const TEST_USER_1 = credentialsFromEnv('TEST_USER_1', 'TEST_PASSWORD_1');
 
-/** `Member` role. */
-export const TEST_USER_2: Credentials = {
-  username: process.env.TEST_USER_2 ?? 'test_user_2',
-  password: process.env.TEST_PASSWORD_2 ?? 'testUser2#2',
-};
+/** `Member` role - persona `member`, with a saved session. */
+export const TEST_USER_2 = credentialsFromEnv('TEST_USER_2', 'TEST_PASSWORD_2');
 
-/** `Moderator` role. */
-export const TEST_USER_3: Credentials = {
-  username: process.env.TEST_USER_3 ?? 'test_user_3',
-  password: process.env.TEST_PASSWORD_3 ?? 'testUser3#3',
-};
+/** `Moderator` role - persona `moderator`. */
+export const TEST_USER_3 = credentialsFromEnv('TEST_USER_3', 'TEST_PASSWORD_3');
 
-/** `Admin` role. */
-export const TEST_USER_4: Credentials = {
-  username: process.env.TEST_USER_4 ?? 'test_user_4',
-  password: process.env.TEST_PASSWORD_4 ?? 'testUser4#4',
-};
+/** `Admin` role - persona `admin`. */
+export const TEST_USER_4 = credentialsFromEnv('TEST_USER_4', 'TEST_PASSWORD_4');
 
-/** `Moderator` and `Admin` roles. */
-export const TEST_USER_5: Credentials = {
-  username: process.env.TEST_USER_5 ?? 'test_user_5',
-  password: process.env.TEST_PASSWORD_5 ?? 'testUser5#5',
-};
+/** `Moderator` and `Admin` roles - persona `adminModerator`, with a saved session. */
+export const TEST_USER_5 = credentialsFromEnv('TEST_USER_5', 'TEST_PASSWORD_5');
+
+/**
+ * The seeded `admin` account (`API/Data/Seed.cs`). No spec signs in as it - only
+ * `users.seed.ts` does, to grant the test accounts their roles on a database
+ * that has none. Read on demand, so a run that never needs it needs neither key.
+ */
+export function seededAdminCredentials(): Credentials {
+  return credentialsFromEnv('ADMIN_USER', 'ADMIN_PASSWORD');
+}
 
 /**
  * Files under `specs/fixtures/`, as absolute paths - `setInputFiles` resolves

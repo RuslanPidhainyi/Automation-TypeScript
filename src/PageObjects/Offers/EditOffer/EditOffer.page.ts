@@ -1,4 +1,4 @@
-﻿import { Locator, Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { BasePage } from '../../BasePage';
 import { PostFormData, PostFormWidget, postForm } from '../../widgets';
 
@@ -27,7 +27,7 @@ export class EditOfferPage extends BasePage {
 
     this.path = `edit-offer/${id ?? ''}`;
     this.root = page.locator('app-edit-offer');
-    this.form = postForm(this.root.locator('form'), 'edit');
+    this.form = postForm(this.root.getByTestId('post-form'));
     this.submitButton = this.form.submitButton;
 
     this.uniqueElement = this.submitButton;

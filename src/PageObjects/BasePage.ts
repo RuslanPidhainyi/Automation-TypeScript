@@ -62,6 +62,8 @@ export abstract class BasePage {
   // Global overlays.
   readonly spinner: Locator;
   readonly toastContainer: Locator;
+  /** Every toast currently on screen, whatever its severity. */
+  readonly toasts: Locator;
   readonly successToast: Locator;
   readonly errorToast: Locator;
   readonly infoToast: Locator;
@@ -70,20 +72,21 @@ export abstract class BasePage {
   constructor(page: Page) {
     this.page = page;
 
-    this.navBar = page.locator('app-nav nav');
-    this.navBrand = this.navBar.locator('a.app-title');
-    this.navLinks = this.navBar.locator('.nav-items .nav-item-link');
-    this.navAvatar = this.navBar.locator('img.users-profile-image');
-    this.navUserMenuToggle = this.navBar.locator('a.dropdown-toggle');
-    this.navUserMenu = this.navBar.locator('.dropdown-menu');
+    this.navBar = page.getByTestId('nav');
+    this.navBrand = this.navBar.getByTestId('nav-brand');
+    this.navLinks = this.navBar.getByTestId('nav-link');
+    this.navAvatar = this.navBar.getByTestId('nav-avatar');
+    this.navUserMenuToggle = this.navBar.getByTestId('nav-user-menu-toggle');
+    this.navUserMenu = this.navBar.getByTestId('nav-user-menu');
 
-    const navForm = this.navBar.locator('form.login-form');
-    this.navUsernameInput = navForm.locator('input[name="username"]');
-    this.navPasswordInput = navForm.locator('input[name="password"]');
-    this.navLoginButton = navForm.locator('button.login-btn');
+    const navForm = this.navBar.getByTestId('nav-login-form');
+    this.navUsernameInput = navForm.getByTestId('nav-login-username');
+    this.navPasswordInput = navForm.getByTestId('nav-login-password');
+    this.navLoginButton = navForm.getByTestId('nav-login-submit');
 
     this.spinner = page.locator('ngx-spinner .la-ball-clip-rotate');
     this.toastContainer = page.locator('#toast-container');
+    this.toasts = this.toastContainer.locator('.ngx-toastr');
     this.successToast = this.toastContainer.locator('.toast-success');
     this.errorToast = this.toastContainer.locator('.toast-error');
     this.infoToast = this.toastContainer.locator('.toast-info');
@@ -185,7 +188,8 @@ export abstract class BasePage {
   }
 
   // ------------------------------------------------------------------ toasts
-  // Messages produced by the client:
+  // Messages produced by the client (the ones the specs assert on are named in
+  // `TOAST`, src/constants/messages.ts):
   //   success - `User {Name} logged in successfully`, `User {Name} registered successfully`,
   //             `User is logged out!`, `Profile updated successfully`,
   //             `Post added successfully`, `Post updated successfully`, `Post deleted successfully`
@@ -195,12 +199,12 @@ export abstract class BasePage {
 
   /** Any toast carrying `text`, regardless of severity. */
   toast(text: string | RegExp): Locator {
-    return this.toastContainer.locator('.ngx-toastr').filter({ hasText: text });
+    return this.toasts.filter({ hasText: text });
   }
 
   /** Clicking a toast dismisses it - useful when it covers the element under test. */
   async dismissToasts(): Promise<void> {
-    for (const toast of await this.toastContainer.locator('.ngx-toastr').all()) {
+    for (const toast of await this.toasts.all()) {
       await toast.click().catch(() => undefined);
     }
   }

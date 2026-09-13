@@ -1,5 +1,6 @@
 import path from 'path';
-import { ADMIN, Credentials, MEMBER } from './env';
+import type { Credentials } from '../../src/models';
+import { PERSONAS } from './personas';
 
 /**
  * Signed-in browser state, produced once per run by the `setup` project
@@ -10,23 +11,24 @@ import { ADMIN, Credentials, MEMBER } from './env';
  * restores it on every load - so a saved `storageState` is a complete session,
  * no cookies involved.
  *
- * A spec opts in per file, which keeps the anonymous specs (login, register,
- * guards) free to run in the same project:
+ * A spec opts in per file or `describe` block through the `persona` fixture
+ * option, which keeps the anonymous specs (login, register, guards) free to run
+ * in the same project:
  *
- *   test.use({ storageState: STORAGE_STATE.member });
+ *   test.use({ persona: 'member' });
  *
  * The files live under `playwright/.auth/`, which is git-ignored.
  */
 export const STORAGE_STATE = {
   member: path.resolve(__dirname, '../../playwright/.auth/member.json'),
-  admin: path.resolve(__dirname, '../../playwright/.auth/admin.json'),
+  adminModerator: path.resolve(__dirname, '../../playwright/.auth/admin-moderator.json'),
 } as const;
 
-/** The roles the setup project signs in as. */
+/** The personas the setup project saves a session for - the names match `PERSONAS`. */
 export type AuthRole = keyof typeof STORAGE_STATE;
 
 /** Credentials behind each saved state. */
 export const CREDENTIALS: Record<AuthRole, Credentials> = {
-  member: MEMBER,
-  admin: ADMIN,
+  member: PERSONAS.member.credentials,
+  adminModerator: PERSONAS.adminModerator.credentials,
 };
