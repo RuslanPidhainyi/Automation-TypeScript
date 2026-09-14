@@ -6,7 +6,6 @@ import {
   idTag,
   LAYER_TAG,
   MUTATION_TAG,
-  signInThroughUi,
   test,
   TEST_USER_1,
   TEST_USER_2,
@@ -136,14 +135,24 @@ test.describe('Tests verify messaging on the test_user_2/test_user_1 conversatio
    * The UI sends through the SignalR hub, not the REST `messages` endpoint
    * (`member-messages.component.ts` -> `MessageService.sendMessage` -> hub
    * method `SendMessage`), so these two need to actually open two live
-   * conversations rather than seed data through the API. This block sets no
-   * `persona`: the sender signs in through the login form on the test's own
-   * page, and the recipient gets a second session from `pageAs`.
+   * conversations rather than seed data through the API. The sender's page
+   * starts signed in from the saved `member` session; the recipient gets a
+   * second session from `pageAs`, which signs in through the login form.
+   *
+   * Two sessions, each loading a profile and connecting to the hub, run past
+   * the 30 s default under a full local run - WebKit most of all - hence
+   * `TIMEOUT.slowTest`.
    */
   test.describe(
     'Tests verify live message delivery and read receipts over SignalR',
     { tag: [LAYER_TAG.regression, MUTATION_TAG.mutation] },
     () => {
+      test.use({ persona: 'member' });
+
+      test.beforeEach(() => {
+        test.setTimeout(TIMEOUT.slowTest);
+      });
+
       test(
         '[ID: 67] a message sent while both members have the conversation open arrives live on the other side',
         { tag: [idTag(67), LAYER_TAG.regression, MUTATION_TAG.mutation] },
@@ -153,7 +162,6 @@ test.describe('Tests verify messaging on the test_user_2/test_user_1 conversatio
           const senderThread = new MemberProfilePage(page, TEST_USER_1.username);
 
           await test.step('[Step 1][UI] test_user_2 opens the conversation with test_user_1', async () => {
-            await signInThroughUi(page, TEST_USER_2);
             await senderThread.open();
             await senderThread.startConversation();
           });
@@ -187,7 +195,6 @@ test.describe('Tests verify messaging on the test_user_2/test_user_1 conversatio
           const senderThread = new MemberProfilePage(page, TEST_USER_1.username);
 
           const ownIndex = await test.step('[Step 1][UI] test_user_2 sends a message while test_user_1 is away', async () => {
-            await signInThroughUi(page, TEST_USER_2);
             await senderThread.open();
             await senderThread.startConversation();
             await senderThread.sendMessage(content);

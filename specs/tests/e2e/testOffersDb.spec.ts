@@ -1,6 +1,7 @@
 import { AddOfferPage, ProfilePage } from '../../../src/PageObjects';
 import { TOAST } from '../../../src/constants/messages';
 import { PostsQueries } from '../../../src/constants/queries/mssql/posts.queries';
+import { TIMEOUT } from '../../../src/constants/timeouts';
 import { buildPost } from '../../../src/helpers/data/post.factory';
 import { uniqueName } from '../../../src/helpers/data/unique.helper';
 import { type CountRow, type PostRow, totalOf } from '../../../src/models';
@@ -24,6 +25,9 @@ import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, signInThroughUi, test
  * `TestCoveragePlan.md` §5) - the UI step had already succeeded and left a
  * post behind that an id-only cleanup could never have found.
  *
+ * Publishing uploads the photo to Cloudinary and deleting the post removes it
+ * from there, so both toasts wait `TIMEOUT.cloudinaryRoundTrip`.
+ *
  *   [Step 1][UI]  test_user_4 publishes a post
  *   [Step 2][DB]  the dbo.Posts row matches the form
  *   [Step 3][API] test_user_3 likes the post
@@ -39,6 +43,7 @@ test.describe(
       '[ID: 75] publishing a post creates a matching dbo.Posts row; deleting it removes that row and any dbo.Likes row referencing it',
       { tag: [idTag(75), LAYER_TAG.e2e, MUTATION_TAG.mutation] },
       async ({ page, apiAs, db, cleanup }) => {
+        test.setTimeout(TIMEOUT.cloudinaryTest);
         const post = buildPost({ title: uniqueName('e2e DB Offer'), description: 'Created by the e2e DB-parity suite.' });
         cleanup.post('admin', post.title);
 
@@ -47,7 +52,7 @@ test.describe(
           const addOffer = await new AddOfferPage(page).open();
           await addOffer.attachPhoto(FIXTURES.photo);
           await addOffer.publish(post);
-          await expect(addOffer.successToast).toContainText(TOAST.postAdded);
+          await expect(addOffer.successToast).toContainText(TOAST.postAdded, { timeout: TIMEOUT.cloudinaryRoundTrip });
         });
 
         const postId = await test.step('[Step 2][DB] The dbo.Posts row matches the form', async () => {
@@ -73,7 +78,7 @@ test.describe(
           const profile = await new ProfilePage(page).open();
           await profile.openPostsTab();
           await profile.card(post.title).deleteIcon.click();
-          await expect(profile.successToast).toContainText(TOAST.postDeleted);
+          await expect(profile.successToast).toContainText(TOAST.postDeleted, { timeout: TIMEOUT.cloudinaryRoundTrip });
         });
 
         await test.step('[Step 6][DB] The Posts row and, by cascade, the Likes row are gone', async () => {

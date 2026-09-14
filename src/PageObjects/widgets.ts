@@ -345,6 +345,9 @@ export type PostToggle =
 
 export type AccommodationType = 'Camping' | 'Hotel' | 'Hostel';
 
+/** How often `setToggle` clicks a checkbox label before it gives up - see there. */
+const TOGGLE_CLICK_ATTEMPTS = 3;
+
 /** Fields `add-offer.component.ts` marks `Validators.required` - `Share post` stays disabled without any of them. */
 export const REQUIRED_POST_FIELDS = [
   'title',
@@ -435,9 +438,18 @@ export function postForm(root: Locator): PostFormWidget {
 
   const isToggled = (toggle: PostToggle) => checkbox(toggle).isChecked();
 
+  // The native checkbox is covered by `span.checkmark`, so it cannot be checked
+  // directly (`setChecked` is refused: another element receives the click) - the
+  // wrapping label is clicked instead. A click that lands while the layout is still
+  // moving (the upload queue rendering above the form) toggles nothing, so the
+  // state is read back after each click and the click repeated until it sticks.
   const setToggle = async (toggle: PostToggle, value: boolean) => {
-    if ((await isToggled(toggle)) !== value) {
+    for (let attempt = 0; attempt < TOGGLE_CLICK_ATTEMPTS; attempt++) {
+      if ((await isToggled(toggle)) === value) return;
       await checkboxControl(toggle).click();
+    }
+    if ((await isToggled(toggle)) !== value) {
+      throw new Error(`The ${toggle} checkbox did not become ${value ? 'checked' : 'unchecked'} after ${TOGGLE_CLICK_ATTEMPTS} clicks`);
     }
   };
 

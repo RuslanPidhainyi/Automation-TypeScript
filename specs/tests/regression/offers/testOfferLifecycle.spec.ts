@@ -1,5 +1,6 @@
 import { AddOfferPage, EditOfferPage, OfferDetailsPage, OffersPage, ProfilePage } from '../../../../src/PageObjects';
 import { TOAST } from '../../../../src/constants/messages';
+import { TIMEOUT } from '../../../../src/constants/timeouts';
 import { buildPost } from '../../../../src/helpers/data/post.factory';
 import { uniqueName } from '../../../../src/helpers/data/unique.helper';
 import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, test } from '../../../support';
@@ -9,12 +10,24 @@ import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, test } from '../../..
  * optional price sections on `/offers/:id`. Each test creates its own post and
  * registers its removal with the `cleanup` fixture before publishing, per the
  * test-data strategy in TestCoveragePlan.md §1.
+ *
+ * Publishing uploads the photo to Cloudinary and deleting a post removes it
+ * from there, so the toasts those two actions end with wait
+ * `TIMEOUT.cloudinaryRoundTrip`, and every test gets `TIMEOUT.cloudinaryTest`:
+ * under a full local run, with the other browsers publishing at the same time,
+ * both round trips have run past the defaults.
  */
 test.describe(
   'Tests verify creating, editing and deleting a post',
   { tag: [LAYER_TAG.regression, MUTATION_TAG.mutation] },
   () => {
     test.use({ persona: 'member' });
+
+    test.beforeEach(() => {
+      test.setTimeout(TIMEOUT.cloudinaryTest);
+    });
+
+    const CLOUDINARY_ROUND_TRIP = { timeout: TIMEOUT.cloudinaryRoundTrip };
 
     test(
       '[ID: 55] creating a post with a price section appears on /offers and /member/profile',
@@ -33,7 +46,7 @@ test.describe(
               description: 'Created by the regression suite.',
             }),
           );
-          await expect(addOffer.successToast).toContainText(TOAST.postAdded);
+          await expect(addOffer.successToast).toContainText(TOAST.postAdded, CLOUDINARY_ROUND_TRIP);
         });
 
         await test.step('[Step 2][UI] The post is listed on /offers', async () => {
@@ -62,7 +75,7 @@ test.describe(
           const addOffer = await new AddOfferPage(page).open();
           await addOffer.attachPhoto(FIXTURES.photo);
           await addOffer.publish(post);
-          await expect(addOffer.successToast).toBeVisible();
+          await expect(addOffer.successToast).toBeVisible(CLOUDINARY_ROUND_TRIP);
         });
 
         const editOffer = new EditOfferPage(page);
@@ -109,7 +122,7 @@ test.describe(
           const addOffer = await new AddOfferPage(page).open();
           await addOffer.attachPhoto(FIXTURES.photo);
           await addOffer.publish(buildPost({ title }));
-          await expect(addOffer.successToast).toBeVisible();
+          await expect(addOffer.successToast).toBeVisible(CLOUDINARY_ROUND_TRIP);
         });
 
         await test.step('[Step 2][UI] Delete it from the own profile', async () => {
@@ -117,7 +130,7 @@ test.describe(
           await profile.openPostsTab();
           await profile.card(title).deleteIcon.click();
 
-          await expect(profile.successToast).toContainText(TOAST.postDeleted);
+          await expect(profile.successToast).toContainText(TOAST.postDeleted, CLOUDINARY_ROUND_TRIP);
           await expect.soft(profile.card(title).root).toHaveCount(0);
         });
 
@@ -139,7 +152,7 @@ test.describe(
           const addOffer = await new AddOfferPage(page).open();
           await addOffer.attachPhoto(FIXTURES.photo);
           await addOffer.publish(buildPost({ title, entranceFee: { minPrice: '5', maxPrice: '15' } }));
-          await expect(addOffer.successToast).toBeVisible();
+          await expect(addOffer.successToast).toBeVisible(CLOUDINARY_ROUND_TRIP);
         });
 
         await test.step('[Step 2][UI] /offers/:id shows the entrance fee and no other optional section', async () => {

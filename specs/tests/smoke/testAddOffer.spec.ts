@@ -1,5 +1,6 @@
 import { AddOfferPage, ProfilePage } from '../../../src/PageObjects';
 import { TOAST } from '../../../src/constants/messages';
+import { TIMEOUT } from '../../../src/constants/timeouts';
 import { buildPost } from '../../../src/helpers/data/post.factory';
 import { uniqueName } from '../../../src/helpers/data/unique.helper';
 import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, test } from '../../support';
@@ -10,6 +11,7 @@ import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, test } from '../../su
  * Creates its own data and registers its removal with the `cleanup` fixture
  * before publishing, per the test-data strategy in TestCoveragePlan.md §1 - a
  * state-changing test must never depend on, or leave behind, seed data.
+ * Publishing uploads the photo to Cloudinary, hence the round-trip timeout.
  */
 test.describe(
   'Tests verify publishing a new post',
@@ -21,6 +23,7 @@ test.describe(
       '[ID: 29] test_user_2 publishes a new post with a photo and it appears on their profile',
       { tag: [idTag(29), LAYER_TAG.smoke, MUTATION_TAG.mutation] },
       async ({ page, cleanup }) => {
+        test.setTimeout(TIMEOUT.cloudinaryTest);
         const title = uniqueName('Smoke Offer');
         cleanup.post('member', title);
 
@@ -28,7 +31,7 @@ test.describe(
         await addOffer.attachPhoto(FIXTURES.photo);
         await addOffer.publish(buildPost({ title, description: 'Published by the smoke suite.' }));
 
-        await expect(addOffer.successToast).toContainText(TOAST.postAdded);
+        await expect(addOffer.successToast).toContainText(TOAST.postAdded, { timeout: TIMEOUT.cloudinaryRoundTrip });
 
         const profile = await new ProfilePage(page).open();
         await profile.openPostsTab();
