@@ -10,6 +10,7 @@ export * from './env';
 export * from './auth';
 export * from './authorizationProbes';
 export * from './fixtures';
+export * from './issues';
 export * from './personas';
 export * from './signIn';
 export * from './tags';

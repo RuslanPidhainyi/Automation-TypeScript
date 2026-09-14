@@ -8,6 +8,8 @@ export const TOAST = {
   postAdded: 'Post added successfully',
   postUpdated: 'Post updated successfully',
   postDeleted: 'Post deleted successfully',
+  /** `add-offer.component.ts` when `posts/add-post` fails - verbatim, grammar included. */
+  postAddFailed: 'Failed to added post',
   profileUpdated: 'Profile updated successfully',
   loginFailed: 'Failed to login',
   unauthorised: 'Unauthorised',
@@ -33,4 +35,11 @@ export const API_ERROR = {
   cannotSendMessage: 'Cannot send message at this time',
   cannotDeleteMessage: 'Cannot delete this message!',
   userNotFound: 'User not found',
+  /**
+   * Cloudinary's message for a file it cannot read as an image, which
+   * `PostsController.CreatePost` and `UsersController.AddPhoto` pass on as the
+   * 400 body. Only the `apiStub` fixture sends it - the suite never uploads a
+   * broken file to the real Cloudinary.
+   */
+  photoRejected: 'Invalid image file',
 } as const;

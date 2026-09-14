@@ -24,8 +24,8 @@ export class ServerErrorPage extends BasePage {
     super(page);
 
     this.root = page.locator('app-server-error');
-    this.heading = this.root.locator('h4');
-    this.message = this.root.locator('h5.text-danger');
+    this.heading = this.root.locator('h1');
+    this.message = this.root.locator('h2.text-danger');
     this.stackTrace = this.root.locator('code');
 
     this.uniqueElement = this.heading;

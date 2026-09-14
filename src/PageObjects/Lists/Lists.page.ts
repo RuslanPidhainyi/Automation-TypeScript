@@ -28,7 +28,7 @@ export class ListsPage extends BasePage {
 
     this.root = page.locator('app-lists');
     this.heading = this.root.locator('.title-section h1');
-    this.emptyState = this.root.locator('.no-posts-container h3');
+    this.emptyState = this.root.locator('.no-posts-container h2');
     this.cards = this.root.getByTestId('offer-card');
 
     this.uniqueElement = this.heading;

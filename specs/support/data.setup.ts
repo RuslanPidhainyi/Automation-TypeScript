@@ -9,7 +9,7 @@ import { PERSONAS } from './personas';
  */
 
 /**
- * `test_EditProfile.spec.ts` swaps the member account's main photo and restores
+ * `testEditProfile.spec.ts` swaps the member account's main photo and restores
  * it (`[ID: 60]`), and checks that it cannot be deleted (`[ID: 61]`). A test
  * account starts with no photo at all; `UsersController.AddPhoto` marks a user's
  * first photo as main, so a single upload is enough. It goes through Cloudinary,

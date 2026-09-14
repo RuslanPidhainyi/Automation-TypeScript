@@ -28,6 +28,16 @@ export const LAYER_TAG = {
    * read straight from SQL Server. Neither the API nor the client is involved.
    */
   database: '@database',
+  /**
+   * `specs/tests/accessibility/` - axe-core finds no violation on each screen
+   * and in each state a user can open (menus, dialogs, pickers).
+   */
+  accessibility: '@accessibility',
+  /**
+   * `specs/tests/visual/` - screenshots compared with the committed baselines.
+   * Local only: the baselines are rendered on Windows, so CI never runs it.
+   */
+  visual: '@visual',
 } as const;
 
 export type LayerTag = (typeof LAYER_TAG)[keyof typeof LAYER_TAG];

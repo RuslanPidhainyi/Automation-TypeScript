@@ -22,7 +22,7 @@ import { expect, test as setup } from './fixtures';
  *              sign-in. Faster, but only as trustworthy as the assumption that
  *              the client still stores the session exactly this way.
  *
- * `specs/tests/smoke/test_Auth.spec.ts` still tests login and logout itself; it
+ * `specs/tests/smoke/testAuth.spec.ts` still tests login and logout itself; it
  * simply does not use these files.
  */
 async function signInViaUi(role: AuthRole, page: Page): Promise<void> {

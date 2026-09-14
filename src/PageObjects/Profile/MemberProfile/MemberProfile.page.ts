@@ -55,7 +55,7 @@ export class MemberProfilePage extends BasePage {
     this.sidebar = memberSidebar(this.root.locator('.left-side'));
     this.tabs = tabset(this.root.locator('tabset.member-tabset'));
 
-    this.emptyState = this.root.locator('.no-posts-container h3');
+    this.emptyState = this.root.locator('.no-posts-container h2');
     this.cards = this.root.getByTestId('offer-card');
 
     this.gallery = this.root.locator('gallery');

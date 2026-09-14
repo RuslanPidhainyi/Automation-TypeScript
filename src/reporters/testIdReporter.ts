@@ -1,0 +1,90 @@
+import fs from 'fs';
+import path from 'path';
+import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
+
+/** One test in one project, as `reports/test-ids.*` lists it. */
+interface TestIdRow {
+  id: number;
+  title: string;
+  project: string;
+  file: string;
+  layer: string;
+  mutation: string;
+  /** `expected`, `unexpected`, `flaky` or `skipped` - Playwright's verdict over every retry. */
+  outcome: string;
+  /** Status of the last attempt: `passed`, `failed`, `timedOut`, `skipped` or `interrupted`. */
+  status: string;
+  retries: number;
+  durationMs: number;
+  issues: string[];
+}
+
+interface TestIdReporterOptions {
+  /** Folder for `test-ids.json` and `test-ids.csv`, relative to the working directory. Defaults to `reports`. */
+  outputDir?: string;
+}
+
+const ID_TAG = /^@(\d+)$/;
+const MUTATION_TAGS = new Set(['@mutation', '@unmutation']);
+
+/**
+ * Writes `reports/test-ids.json` and `reports/test-ids.csv`: every test that
+ * carries an `@<n>` ID tag, per project, with its layer and mutation tags, the
+ * outcome, and the product issues annotated on it (`specs/support/issues.ts`).
+ * A table the thesis - or a test-management tool - can take without parsing the
+ * HTML report. Tests without an ID (the setup and seed projects) are left out.
+ */
+export default class TestIdReporter implements Reporter {
+  private readonly rows = new Map<string, TestIdRow>();
+  private readonly outputDir: string;
+  /** False after `playwright test --list`, which ends the run without a single test. */
+  private testEnded = false;
+
+  constructor(options: TestIdReporterOptions = {}) {
+    this.outputDir = path.resolve(options.outputDir ?? 'reports');
+  }
+
+  printsToStdio(): boolean {
+    return false;
+  }
+
+  onTestEnd(test: TestCase, result: TestResult): void {
+    this.testEnded = true;
+    const idTag = test.tags.map((tag) => ID_TAG.exec(tag)).find((match) => match !== null);
+    if (!idTag) return;
+
+    const project = test.parent.project()?.name ?? '';
+    this.rows.set(`${project}\u0000${test.id}`, {
+      id: Number(idTag[1]),
+      title: test.title,
+      project,
+      file: path.relative(process.cwd(), test.location.file).replace(/\\/g, '/'),
+      layer: test.tags.find((tag) => !ID_TAG.test(tag) && !MUTATION_TAGS.has(tag)) ?? '',
+      mutation: test.tags.find((tag) => MUTATION_TAGS.has(tag)) ?? '',
+      outcome: test.outcome(),
+      status: result.status,
+      retries: result.retry,
+      durationMs: result.duration,
+      issues: test.annotations.filter((annotation) => annotation.type === 'issue').map((annotation) => annotation.description ?? ''),
+    });
+  }
+
+  onEnd(): void {
+    // Keep the last files rather than empty them when nothing ran.
+    if (!this.testEnded) return;
+
+    const rows = [...this.rows.values()].sort((a, b) => a.id - b.id || a.project.localeCompare(b.project));
+    fs.mkdirSync(this.outputDir, { recursive: true });
+    fs.writeFileSync(path.join(this.outputDir, 'test-ids.json'), `${JSON.stringify(rows, null, 2)}\n`);
+    fs.writeFileSync(path.join(this.outputDir, 'test-ids.csv'), toCsv(rows));
+  }
+}
+
+function toCsv(rows: TestIdRow[]): string {
+  const columns: (keyof TestIdRow)[] = ['id', 'title', 'project', 'file', 'layer', 'mutation', 'outcome', 'status', 'retries', 'durationMs', 'issues'];
+  const cell = (value: TestIdRow[keyof TestIdRow]) => {
+    const text = Array.isArray(value) ? value.join(' | ') : String(value);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  return [columns.join(','), ...rows.map((row) => columns.map((column) => cell(row[column])).join(','))].join('\n') + '\n';
+}

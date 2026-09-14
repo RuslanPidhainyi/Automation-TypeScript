@@ -19,8 +19,11 @@ import { baseUrl } from './src/PageObjects/BasePage';
  *   e2e        - does the UI's data actually match what's in the DB?  chromium, needs direct SQL Server access
  *   api        - does every route let in exactly the right callers?   no browser, needs only the API
  *   database   - do the schema and the data keep their invariants?    no browser, needs only SQL Server
+ *   accessibility - does axe-core find no violation on any screen?  chromium
+ *   visual     - do the data-free screens still look the same?      chromium, local only (Windows baselines)
  *
- *   npm run test:health | test:smoke | test:regression | test:e2e | test:api | test:database
+ *   npm run test:health | test:smoke | test:regression | test:e2e | test:api | test:database | test:a11y | test:visual
+ *   npm run test:all - every layer in pipeline order, one merged report (scripts/run-tests.js)
  *
  * On CI the same projects run as one pipeline (`PIPELINE` below), against a
  * stack `webServer` starts (`START_STACK=1`) - see README.md, "CI".
@@ -40,6 +43,12 @@ const PIPELINE = !!process.env.CI;
 /** The application repository - next to this one unless `APP_DIR` says otherwise. */
 const APP_DIR = path.resolve(__dirname, process.env.APP_DIR ?? '../EW-TravelApp-.Net8-Angular17');
 
+/** Writes reports/test-ids.json and .csv - every test by its [ID: n] tag, with its outcome and product issues. */
+const TEST_ID_REPORTER = './src/reporters/testIdReporter.ts';
+
+/** Writes reports/custom-report/ - statistics per feature, filters and search, and each failed test's Markdown log, screenshot and trace. */
+const CUSTOM_REPORTER = './src/reporters/customReport/customReporter.ts';
+
 export default defineConfig({
   testDir: './specs/tests',
   /* Playwright's own defaults, scaled by TIMEOUT_MULTIPLIER - see src/constants/timeouts.ts. */
@@ -57,8 +66,8 @@ export default defineConfig({
      artifacts. The JUnit file goes to `reports/`, not `test-results/`: Playwright
      empties `test-results/` at the start of every run. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
-    ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'reports/junit.xml' }]]
-    : 'html',
+    ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'reports/junit.xml' }], [TEST_ID_REPORTER], [CUSTOM_REPORTER]]
+    : [['html'], [TEST_ID_REPORTER], [CUSTOM_REPORTER]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
@@ -67,8 +76,10 @@ export default defineConfig({
        (Client/angular.json -> architect.serve.options.ssl), and so does the API
        on https://localhost:5001. Applies to the `request` fixture as well. */
     ignoreHTTPSErrors: true,
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Record a trace of every attempt and keep it when the attempt fails, so each
+       failed test in reports/custom-report/ opens its trace - locally as well,
+       where nothing is retried. See https://playwright.dev/docs/trace-viewer */
+    trace: 'retain-on-failure',
     /* Збирати скріншоти лише при падінні тесту */
     screenshot: 'only-on-failure',
     /* Записувати відео при першому повторі тесту */
@@ -160,6 +171,40 @@ export default defineConfig({
       testDir: './specs/tests/database',
       dependencies: PIPELINE ? ['health'] : [],
     },
+    {
+      /* axe-core over every screen and every state a user can open - see
+         specs/tests/accessibility. Chromium only: the markup and the colours
+         axe checks are the same in every engine. */
+      name: 'accessibility',
+      testDir: './specs/tests/accessibility',
+      dependencies: ['setup'],
+      /* Reduced motion switches off Bootstrap's fade transitions, so axe never measures
+         the contrast of a dialog or a toast that is still fading in. */
+      use: { ...devices['Desktop Chrome'], contextOptions: { reducedMotion: 'reduce' } },
+    },
+    {
+      /* Screenshots against the baselines committed next to the specs. Local
+         only: they are rendered on Windows, so CI (Linux) never lists this
+         project. Refresh them with `npm run test:visual -- --update-snapshots`. */
+      name: 'visual',
+      testDir: './specs/tests/visual',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'] },
+      expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.01 } },
+    },
+    /* The seed of the Playwright Test Agents (test-plans/seed.spec.ts). Only
+       while PW_AGENTS=1 - .mcp.json sets it - so no ordinary run picks it up. */
+    ...(process.env.PW_AGENTS === '1'
+      ? [
+          {
+            name: 'agents',
+            testDir: './test-plans',
+            testMatch: /seed\.spec\.ts$/,
+            dependencies: ['setup'],
+            use: { ...devices['Desktop Chrome'] },
+          },
+        ]
+      : []),
 
     /* Smoke ще раз у реальних branded-збірках (system-installed Chrome/Edge)
        замість Playwright-івського bundled Chromium. Лише smoke: без власного

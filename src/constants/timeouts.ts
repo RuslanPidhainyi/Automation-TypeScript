@@ -37,10 +37,16 @@ export const TIMEOUT = {
    */
   signalR: scaled(15_000),
 
-  /** One round trip through Cloudinary and the database (upload, set main, delete a photo). */
-  cloudinaryRoundTrip: scaled(20_000),
+  /**
+   * One round trip through Cloudinary and the database - publishing or deleting a post, uploading, setting
+   * main or deleting a photo. A full local run, with three browsers uploading at once, has taken 22 s.
+   */
+  cloudinaryRoundTrip: scaled(30_000),
 
-  /** A test with several full page loads plus a second sign-in (the admin roles modal) - webkit needs it most. */
+  /**
+   * A test with several full page loads plus a second session - the admin roles modal, the two SignalR
+   * conversations in `testMessaging.spec.ts`. WebKit needs it most.
+   */
   slowTest: scaled(60_000),
 
   /** A test chaining several Cloudinary round trips - Cloudinary slows down under local parallelism. */

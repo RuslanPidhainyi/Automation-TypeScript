@@ -40,7 +40,7 @@ export class LoginPage extends BasePage {
     super(page);
 
     this.root = page.locator('app-login');
-    this.card = this.root.locator('.login-page main.common-card');
+    this.card = this.root.locator('.login-page .common-card');
 
     this.greeting = this.card.locator('.greeting-img');
     this.benefits = this.card.locator('.list li');

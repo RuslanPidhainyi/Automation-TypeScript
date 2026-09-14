@@ -12,7 +12,7 @@ export interface ProbeTarget {
   username: string;
 }
 
-/** One request of the authorization matrix (`specs/tests/api/test_AuthorizationMatrix.spec.ts`). */
+/** One request of the authorization matrix (`specs/tests/api/testAuthorizationMatrix.spec.ts`). */
 export interface Probe {
   label: string;
   send: (caller: TravelApi, target: ProbeTarget) => Promise<APIResponse>;
