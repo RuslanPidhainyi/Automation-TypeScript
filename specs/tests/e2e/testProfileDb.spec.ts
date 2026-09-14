@@ -7,7 +7,7 @@ import { expect, idTag, LAYER_TAG, MUTATION_TAG, signInThroughUi, test, TEST_USE
 
 /**
  * e2e layer - closes the UI ⇒ API ⇒ DB triangle `TestCoveragePlan.md` §7
- * describes for the member profile. `regression/profile-and-photos/testEditProfile.spec.ts`
+ * describes for the member profile. `regression/profileAndPhotos/testEditProfile.spec.ts`
  * `[ID: 59]` already proves UI ⇒ API (it re-`GET`s `users/{username}` and
  * compares); this file adds the missing link by reading `dbo.AspNetUsers`
  * directly, so a bug where the API echoes a value it never actually

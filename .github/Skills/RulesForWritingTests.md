@@ -277,6 +277,19 @@ Every spec was renamed to this convention on 2026-09-13 from the earlier `test_<
 `testApi` / `testApp` before that from `api.spec.ts` / `app.spec.ts`) — don't reintroduce either style for a new
 file.
 
+A folder that groups the specs of one layer by area is camelCase as well — one word, no `test` prefix, no
+separators:
+
+```
+✔ specs/tests/regression/guardsAndErrors/testRouteGuards.spec.ts
+✔ specs/tests/regression/auth/testLogin.spec.ts
+✘ specs/tests/regression/guards-and-errors/testRouteGuards.spec.ts   no kebab-case - the folder is one camelCase word
+```
+
+`guards-and-errors/`, `likes-and-lists/` and `profile-and-photos/` under `regression/` were renamed to
+`guardsAndErrors/`, `likesAndLists/` and `profileAndPhotos/` on 2026-09-14. A new folder there also needs its prefix
+in `src/reporters/customReport/features.ts`, or the custom report counts its specs under `Other`.
+
 ---
 
 ## 8. Timeouts come from `src/constants/timeouts.ts`, never as numbers

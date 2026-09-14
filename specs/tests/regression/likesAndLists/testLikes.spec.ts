@@ -26,6 +26,9 @@ test.describe(
       "[ID: 62] liking another member's post shows it on /lists and /offers even after a reload, unliking clears it",
       { tag: [idTag(62), LAYER_TAG.regression, MUTATION_TAG.unmutation] },
       async ({ page }) => {
+        // Four screens and a reload, none slow on its own - together past 30 s in Firefox under a full run.
+        test.slow();
+
         const title = await test.step('[Step 1][UI] Like the first post test_user_2 does not own', async () => {
           const offers = await new OffersPage(page).open();
           await offers.cards.first().waitFor();

@@ -45,6 +45,8 @@ test.describe(
       '[ID: 45] signed out, every authGuard-protected route is blocked with the "You shall not pass!" toast',
       { tag: [idTag(45), LAYER_TAG.regression, MUTATION_TAG.unmutation] },
       async ({ page }) => {
+        // Eleven full navigations, none slow on its own - together past 30 s in Firefox under a full run.
+        test.slow();
         const targets: BasePage[] = [
           new OffersPage(page),
           new OfferDetailsPage(page, 1),

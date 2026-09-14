@@ -7,7 +7,7 @@ import { expect, idTag, LAYER_TAG, MUTATION_TAG, signInThroughUi, test, TEST_USE
 /**
  * e2e layer - `dbo.Likes` has a composite primary key `(AppUserId, PostId)`,
  * no surrogate `Id` at all (`AppDbContext.OnModelCreating`). No API response
- * exposes that row shape directly - `regression/likes-and-lists/testLikes.spec.ts`
+ * exposes that row shape directly - `regression/likesAndLists/testLikes.spec.ts`
  * `[ID: 62]` already proves the UI round trip; this file proves the exact row
  * the UI action is supposed to produce actually exists (and is actually gone
  * again) in the table itself.

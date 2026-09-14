@@ -29,7 +29,8 @@ const { spawnSync } = require('child_process');
  * health: when it fails the stack is down and the rest is skipped. `api` gets a
  * phase before regression and e2e because those change the roles it reads from
  * sign-in tokens (README.md, "The layers"). Each phase writes a blob report,
- * `merge-reports` turns them into playwright-report/ and `show-report` opens it.
+ * `merge-reports` turns them into playwright-report/ (plus reports/test-ids.* and
+ * reports/custom-report/) and `show-report` opens it.
  */
 const args = process.argv.slice(2);
 const forwarded = [];
@@ -121,7 +122,7 @@ if (fs.readdirSync(MERGE_DIR).length === 0) {
 }
 
 console.log('\n=== Merging the phases into playwright-report/ ===\n');
-if (playwright(['merge-reports', '--reporter=html,./src/reporters/testIdReporter.ts', MERGE_DIR], { PLAYWRIGHT_HTML_OPEN: 'never' }) !== 0) {
+if (playwright(['merge-reports', '--reporter=html,./src/reporters/testIdReporter.ts,./src/reporters/customReport/customReporter.ts', MERGE_DIR], { PLAYWRIGHT_HTML_OPEN: 'never' }) !== 0) {
   process.exit(1);
 }
 

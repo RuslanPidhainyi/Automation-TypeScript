@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{TITLE}}</title>
+  <style>
+/* {{STYLE}} */
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="run-header">
+      <div>
+        <h1 id="report-title"></h1>
+        <p class="run-meta" id="run-meta"></p>
+      </div>
+      <p class="run-badge" id="run-badge"></p>
+    </header>
+
+    <section class="panel" aria-labelledby="summary-heading">
+      <div class="panel-head">
+        <h2 id="summary-heading">All tests</h2>
+        <ul class="legend" id="summary-legend"></ul>
+      </div>
+      <div class="tiles" id="summary-tiles"></div>
+      <div class="summary-bar" id="summary-bar"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="features-heading">
+      <div class="panel-head">
+        <h2 id="features-heading">By feature</h2>
+        <p class="hint">Select a feature to list its tests.</p>
+      </div>
+      <div class="table-scroll">
+        <table class="features">
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col" class="num">Tests</th>
+              <th scope="col" class="num">Passed</th>
+              <th scope="col" class="num">Failed</th>
+              <th scope="col" class="num">Skipped</th>
+              <th scope="col" class="bar-col">Share</th>
+            </tr>
+          </thead>
+          <tbody id="feature-rows"></tbody>
+          <tfoot id="feature-total"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="tests-heading" id="tests">
+      <div class="panel-head">
+        <h2 id="tests-heading">Tests</h2>
+        <p class="hint" id="result-count" aria-live="polite"></p>
+      </div>
+      <div class="toolbar">
+        <label class="search">
+          <span class="visually-hidden">Search tests</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3.5 3.5"/></svg>
+          <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search by ID (62, @62, 62 63), file name or path">
+        </label>
+        <label class="select"><span class="visually-hidden">Feature</span><select id="feature-filter"></select></label>
+        <label class="select"><span class="visually-hidden">Project</span><select id="project-filter"></select></label>
+        <label class="select"><span class="visually-hidden">Sort</span><select id="sort"></select></label>
+        <button type="button" class="button button--quiet" id="clear-filters">Clear filters</button>
+      </div>
+      <div class="filters">
+        <div class="filter-row">
+          <span class="filter-label" id="status-label">Status</span>
+          <div class="chips" id="status-chips" role="group" aria-labelledby="status-label"></div>
+        </div>
+        <div id="tag-filters"></div>
+      </div>
+      <ol class="test-list" id="test-list"></ol>
+      <p class="empty" id="empty" hidden>No test matches these filters.</p>
+    </section>
+  </main>
+
+  <dialog class="shot-dialog" id="shot-dialog" aria-labelledby="shot-title">
+    <div class="shot-body">
+      <div class="shot-head">
+        <div>
+          <h3 id="shot-title"></h3>
+          <p class="hint" id="shot-subtitle"></p>
+        </div>
+        <button type="button" class="icon-button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="chips" id="shot-tabs"></div>
+      <a class="shot-frame" id="shot-open" target="_blank" rel="noopener" title="Open the full-size image"><img id="shot-image" alt=""></a>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="tooltip" id="tooltip" hidden></div>
+
+  <script id="report-data" type="application/json">{{DATA}}</script>
+  <script>
+/* {{SCRIPT}} */
+  </script>
+</body>
+</html>

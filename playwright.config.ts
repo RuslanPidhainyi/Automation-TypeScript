@@ -46,6 +46,9 @@ const APP_DIR = path.resolve(__dirname, process.env.APP_DIR ?? '../EW-TravelApp-
 /** Writes reports/test-ids.json and .csv - every test by its [ID: n] tag, with its outcome and product issues. */
 const TEST_ID_REPORTER = './src/reporters/testIdReporter.ts';
 
+/** Writes reports/custom-report/ - statistics per feature, filters and search, and each failed test's Markdown log, screenshot and trace. */
+const CUSTOM_REPORTER = './src/reporters/customReport/customReporter.ts';
+
 export default defineConfig({
   testDir: './specs/tests',
   /* Playwright's own defaults, scaled by TIMEOUT_MULTIPLIER - see src/constants/timeouts.ts. */
@@ -63,8 +66,8 @@ export default defineConfig({
      artifacts. The JUnit file goes to `reports/`, not `test-results/`: Playwright
      empties `test-results/` at the start of every run. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI
-    ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'reports/junit.xml' }], [TEST_ID_REPORTER]]
-    : [['html'], [TEST_ID_REPORTER]],
+    ? [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'reports/junit.xml' }], [TEST_ID_REPORTER], [CUSTOM_REPORTER]]
+    : [['html'], [TEST_ID_REPORTER], [CUSTOM_REPORTER]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
@@ -73,8 +76,10 @@ export default defineConfig({
        (Client/angular.json -> architect.serve.options.ssl), and so does the API
        on https://localhost:5001. Applies to the `request` fixture as well. */
     ignoreHTTPSErrors: true,
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Record a trace of every attempt and keep it when the attempt fails, so each
+       failed test in reports/custom-report/ opens its trace - locally as well,
+       where nothing is retried. See https://playwright.dev/docs/trace-viewer */
+    trace: 'retain-on-failure',
     /* Збирати скріншоти лише при падінні тесту */
     screenshot: 'only-on-failure',
     /* Записувати відео при першому повторі тесту */
@@ -173,7 +178,9 @@ export default defineConfig({
       name: 'accessibility',
       testDir: './specs/tests/accessibility',
       dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'] },
+      /* Reduced motion switches off Bootstrap's fade transitions, so axe never measures
+         the contrast of a dialog or a toast that is still fading in. */
+      use: { ...devices['Desktop Chrome'], contextOptions: { reducedMotion: 'reduce' } },
     },
     {
       /* Screenshots against the baselines committed next to the specs. Local

@@ -22,7 +22,8 @@
     "lint:fix": "eslint . --fix",
     "check": "npm run typecheck && npm run lint",
     "prepare": "husky",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "report:custom": "playwright show-report reports/custom-report"
   },
   "keywords": [
     "playwright",

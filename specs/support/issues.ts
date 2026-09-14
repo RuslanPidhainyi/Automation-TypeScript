@@ -35,6 +35,10 @@ export const PRODUCT_ISSUE = {
     'Fixed on EW-021: photo-editor had no onErrorItem, so a refused upload showed the member no message',
     `${APP_REPOSITORY}/blob/EW-021/Client/src/app/member/photo-editor/photo-editor.component.ts`,
   ),
+  lastActiveFailedConcurrentRequest: productIssue(
+    'Fixed on EW-021: LogUserActivity saved LastActive through a stale tracked user, so a request answered 500 when the user changed meanwhile - a photo upload while an admin edited the roles',
+    `${APP_REPOSITORY}/blob/EW-021/API/Helpers/LogUserActivity.cs`,
+  ),
   accessibilityViolations: productIssue(
     'Fixed on EW-021: axe-core found WCAG and best-practice violations on every screen',
     `${APP_REPOSITORY}/tree/EW-021`,
@@ -46,6 +50,7 @@ const ACCESSIBILITY_TEST_IDS = [137, 138, 139, 140, 141, 142, 143, 144, 145, 146
 
 const ISSUES_BY_ID: Partial<Record<number, readonly ProductIssue[]>> = {
   32: [PRODUCT_ISSUE.messageSentBeforeHubConnected],
+  60: [PRODUCT_ISSUE.lastActiveFailedConcurrentRequest],
   93: [PRODUCT_ISSUE.likesWithoutAuthorize],
   97: [PRODUCT_ISSUE.likesWithoutAuthorize],
   118: [PRODUCT_ISSUE.updatePostWithoutOwnerCheck],
