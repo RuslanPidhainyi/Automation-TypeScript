@@ -166,9 +166,15 @@ no login state and creates no data.
 ### Prerequisites
 
 - Node.js 18+ and npm.
-- The application under test (`EW-TravelApp-.Net8-Angular17`, next to this repository) running locally:
-  - API: `dotnet run` in `API/` → `https://localhost:5001`
-  - client: `npm start` in `Client/` → `https://localhost:4200`
+- The application under test running locally:
+  1. Clone [EW-TravelApp-.Net8-Angular17](https://github.com/RuslanPidhainyi/EW-TravelApp-.Net8-Angular17) next to
+     this repository (the config looks for it at `../EW-TravelApp-.Net8-Angular17`; point `APP_DIR` elsewhere
+     otherwise).
+  2. Configure it by following its
+     [installation instructions](https://github.com/RuslanPidhainyi/EW-TravelApp-.Net8-Angular17#impl).
+  3. Start it:
+     - API: `dotnet run` in `API/` → `https://localhost:5001`
+     - client: `npm start` in `Client/` → `https://localhost:4200`
 
   Both serve HTTPS with self-signed certificates, so the config sets `ignoreHTTPSErrors: true`.
   Instead of starting them by hand, set `$env:START_STACK = '1'`: the config's `webServer` starts both and reuses a
