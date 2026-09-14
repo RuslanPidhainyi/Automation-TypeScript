@@ -721,6 +721,89 @@ Append new entries at the bottom.
     `RulesForWritingTests.md` §7 and checklist item 7 now describe the camelCase convention. No test changed:
     `playwright test --list` reports 231 tests in 37 files before and after.
 
+26. **Cloudinary stubbed for UI-only checks** (2026-09-13, at the user's request, after comparing the suite with
+    `alexneo2003/playwright`). 3 tests added, `[ID: 134]`–`[ID: 136]`; next free ID `137`.
+    - **Why the existing tests were left alone**: Cloudinary is called by the API (`PhotoService`), not by the browser,
+      so `page.route` can only answer the client's own `posts/add-post` / `users/add-photo` - and then nothing is
+      stored. Every existing test that uploads (`[ID: 29]`, `[ID: 55]`–`[ID: 58]`, `[ID: 60]`, `[ID: 75]`) reads the
+      stored post or photo back afterwards, so they stay on the real API.
+    - **`apiStub` fixture** (`src/helpers/network/apiStub.helper.ts`): `addPostSucceeds`, `addPostRejectsPhoto`,
+      `addPhotoRejectsPhoto`. A route is matched on its path (the client calls `posts/add-post/` with a trailing slash)
+      and answered with `access-control-allow-origin`, since the API is another origin; `readMultipart` parses the
+      body with Node's `Response.formData()`. New texts: `TOAST.postAddFailed`, `API_ERROR.photoRejected`.
+    - **Tests**: `regression/offers/testOfferSubmission.spec.ts` - `[ID: 134]` the multipart request carries every
+      filled field and the photo, then `/member/profile` opens; `[ID: 135]` Cloudinary's rejection shows the reason and
+      `Failed to added post`, and the form and the queued photo stay. `testEditProfile.spec.ts` - `[ID: 136]` a refused
+      profile photo is not added.
+    - **Application gap**: `photo-editor.component.ts` has no `onErrorItem`, so a refused upload empties the queue
+      without any message. `[ID: 136]` asserts that current behaviour.
+    - Docs: `RulesForWritingTests.md` §3 and §11, §6.3 here, *Поза цим планом* in the modification plan.
+    - `npm run check` clean; the three tests **9/9** on `regression-chromium`, `-firefox` and `-webkit`;
+      `playwright test --list` reports 240 tests in 38 files (231 + 3 tests × 3 regression projects).
+
+27. **Filled the gaps found by comparing the suite with `alexneo2003/playwright`** (2026-09-13, at the user's request).
+    26 tests added, `[ID: 137]`–`[ID: 162]`; next free ID `163`.
+    - **Accessibility layer** (`specs/tests/accessibility/`, `@accessibility`, project `accessibility`, `npm run test:a11y`,
+      on CI): `testPublicPages` `[ID: 137]`–`[ID: 141]`, `testMemberPages` `[ID: 142]`–`[ID: 153]`, `testAdminPages`
+      `[ID: 154]`–`[ID: 157]` - one test per screen and per state a user can open (the user menu, profile tabs, the date
+      picker, the roles dialog, the post form with every section open, a queued upload), each through
+      `expect(page).toHaveNoA11yViolations()` (`@axe-core/playwright` 4.13, every rule axe enables by default).
+    - **The product was fixed first** - the user chose to fix every violation. axe found 14 rules violated across all
+      screens (button names, labels, contrast, ngx-bootstrap's tab markup, `aria-allowed-attr` on the menu toggle,
+      landmarks, `h1`, heading order). Fixed in `EW-TravelApp-.Net8-Angular17` (branch `EW-021`, not committed): `<main>`
+      around the router outlet; one `h1` per screen and no skipped heading levels (visually hidden where the design has
+      no heading; cards and the post detail use `h2`/`h3` with Bootstrap size classes); names for the icon buttons
+      (password eye, share post, delete photo); labels for the edit-profile fields, the post-form checkboxes, number
+      inputs and accommodation select, and the roles-dialog checkboxes; `AccessibleTabsetDirective` (`role="presentation"`
+      on the tab `li`); the user menu toggle is a `<button>`; the roles dialog is named (`ariaLabelledBy`); gallery images
+      get `alt`; the empty table headers read "Actions"; `showWeekNumbers: false`; WCAG AA contrast for the tab links,
+      the blue and red buttons, Bootstrap's success/danger buttons, the date picker and the toasts. The page objects
+      followed the markup: `LoginPage` (`.common-card`), `RegistrationPage` and `AdminPage` (`h1`), `ServerErrorPage`
+      (`h1`, `h2.text-danger`), the empty states (`h2`), `AddOfferPage` (`h1`), `OfferDetailsPage.sectionPrices` (`h3`).
+    - **Matchers** (`specs/support/matchers.ts`, reached through `expect` from `specs/support`): `toMatchSchema`, now used
+      by `[ID: 19]`, `[ID: 114]` and `[ID: 126]`, and `toHaveNoA11yViolations`.
+    - **`page.clock`**: `regression/profile-and-photos/testLastActive.spec.ts` `[ID: 158]` pins the clock 5 hours, then
+      3 days after a seeded member's `lastActive` (`shiftTime`, `src/helpers/time.helper.ts`).
+    - **Visual layer** (`specs/tests/visual/testScreens.spec.ts`, `@visual`, project `visual`, `npm run test:visual`,
+      local only): `[ID: 159]`–`[ID: 162]` - login, registration, not-found and the empty add-post form with the avatar
+      masked; Windows baselines committed in `testScreens.spec.ts-snapshots/`.
+    - **Product issues and a reporter**: `specs/support/issues.ts` (`PRODUCT_ISSUE`, `issuesOf(id)`) annotates
+      `[ID: 32]`, `[ID: 93]`, `[ID: 97]`, `[ID: 118]`, `[ID: 136]` and the accessibility tests; `src/reporters/testIdReporter.ts`
+      writes `reports/test-ids.json` and `.csv`, registered in the config, in `npm run test:all`'s merge and in CI's
+      merge job.
+    - **CI sharding** (`.github/workflows/playwright.yml`): a `shardIndex` matrix - three shards when regression runs,
+      one otherwise - with `--reporter=list,blob`, and a `report` job that merges the blobs into HTML, JUnit and
+      `reports/test-ids.*`. `CI=1 ... --shard=i/3 --list` shows seed-users, health, api, database and setup in every
+      shard; `merge-reports` with the custom reporter was checked on a health blob. Not run on GitHub yet.
+    - **Playwright Test Agents**: `npx playwright init-agents --loop=claude --project=agents` - `.claude/agents/` with a
+      "Project rules" block each, `.mcp.json` setting `PW_AGENTS=1`, and `test-plans/seed.spec.ts` in the `agents`
+      project, which exists only while that variable is set; `test-plans/` added to `tsconfig.json`.
+    - Docs: `RulesForWritingTests.md` §3, §6, §13 and checklist item 13; `README.md` (layers, commands, structure, visual
+      baselines, reports, test agents, CI); *Поза цим планом* in the modification plan.
+    - `npm run check` and `ng build` clean. The new and changed tests 33/33, visual 4/4 against fresh baselines. Full run:
+      `health` + `api` + `database` **80/80**, then smoke, regression in three browsers, e2e, accessibility, visual and
+      `Google Chrome` **180/183** in 9.4 min. The three failures passed when re-run on their own: `[ID: 57]` (the
+      post-published toast after more than 5 s) and `[ID: 60]` (a Cloudinary delete past 20 s) under eight parallel
+      projects, and `[ID: 68]` in WebKit (two UI sign-ins past the 30 s test budget, as `[ID: 67]` before).
+      `playwright test --list` reports 268 tests in 43 files.
+
+28. **Closed what item 27 left open** (2026-09-14, at the user's request). No test added; `[ID: 136]` changed with the
+    product.
+    - **Timeouts where a full local run needs them** (test-side, not product defects): `TIMEOUT.cloudinaryRoundTrip`
+      20 s → 30 s (a Cloudinary delete took 22 s with three browsers uploading at once). The toasts that end a publish
+      or a post delete wait that long in `[ID: 29]`, `[ID: 55]`–`[ID: 58]` and `[ID: 75]`, and those tests get
+      `TIMEOUT.cloudinaryTest`. In `testMessaging.spec.ts` the sender of `[ID: 67]`/`[ID: 68]` starts from the saved
+      `member` session instead of the login form, and both tests get `TIMEOUT.slowTest`.
+    - **`postForm.setToggle` retries** (`src/PageObjects/widgets.ts`): a click on the styled checkbox label that landed
+      during a layout shift toggled nothing, and Firefox `[ID: 58]` then waited 90 s for a price field. The state is
+      now read back after each click, up to three clicks, with an error naming the checkbox. `setChecked` is no option:
+      `span.checkmark` covers the native input, so Playwright refuses the click in every engine.
+    - **Product fix**: `photo-editor.component.ts` gets `onErrorItem`, showing the API's reason in an error toast (or
+      "Failed to upload the photo"). `[ID: 136]` now also asserts that toast (`API_ERROR.photoRejected`);
+      `PRODUCT_ISSUE.photoUploadFailedSilently` says fixed.
+    - `npm run check` and `ng build` clean; the changed tests 28/29 in three browsers before the toggle fix (Firefox
+      `[ID: 58]`), then `[ID: 52]` in three browsers, `[ID: 153]` and Firefox `[ID: 58]` four times in a row, all green.
+
 ---
 
 ## 5. Failed attempts
@@ -884,11 +967,15 @@ One folder per domain.
 - Delete removes the card from `/offers` and from the author's profile.
 - `/offers/:id` renders the optional price rows only when they were filled.
 - Empty state when the author has no posts.
+- Against a stubbed `posts/add-post` (`apiStub`, `testOfferSubmission.spec.ts`): the request carries every filled
+  field and the photo, and the client opens `/member/profile`; a photo Cloudinary rejects shows the reason and keeps
+  the form and the queued photo.
 
 **`profile-and-photos/`**
 - Edit profile saves description/interests/city/country and survives a reload.
 - Photo upload, set-main updates the nav avatar, delete photo.
 - The main photo cannot be deleted.
+- Against a stubbed `users/add-photo`: a photo the API refuses is not added, and the queue empties without a message.
 
 **`likes-and-lists/`**
 - Like/unlike round-trip between `/offers` and `/lists`.

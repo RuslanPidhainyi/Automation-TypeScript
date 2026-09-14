@@ -46,7 +46,7 @@ export class AdminPage extends BasePage {
     super(page);
 
     this.root = page.locator('app-admin-panel');
-    this.heading = this.root.locator('h2');
+    this.heading = this.root.locator('h1');
     this.tabs = tabset(this.root.locator('tabset.member-tabset'));
 
     const userManagement = this.root.locator('app-user-management');

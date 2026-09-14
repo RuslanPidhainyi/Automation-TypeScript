@@ -131,7 +131,8 @@ test.describe(
         expect(response.status()).toBe(500);
         expect(response.headers()['content-type']).toContain('application/json');
 
-        const body = ApiExceptionSchema.parse(await response.json());
+        await expect(response).toMatchSchema(ApiExceptionSchema);
+        const body = await response.json();
         expect(body.statusCode).toBe(500);
         expect(body.message).toBeTruthy();
       },

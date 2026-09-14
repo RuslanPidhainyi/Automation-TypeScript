@@ -5,12 +5,15 @@
   "main": "index.js",
   "scripts": {
     "test": "node scripts/run-tests.js",
+    "test:all": "node scripts/run-tests.js --all",
     "test:health": "node scripts/run-tests.js --project=health",
     "test:smoke": "node scripts/run-tests.js --project=smoke",
     "test:regression": "node scripts/run-tests.js --project=regression-chromium --project=regression-firefox --project=regression-webkit",
     "test:e2e": "node scripts/run-tests.js --project=e2e",
     "test:api": "node scripts/run-tests.js --project=api",
     "test:database": "node scripts/run-tests.js --project=database",
+    "test:a11y": "node scripts/run-tests.js --project=accessibility",
+    "test:visual": "node scripts/run-tests.js --project=visual",
     "test:headed": "node scripts/run-tests.js --headed",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
@@ -31,6 +34,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "1.61.0",
     "@types/mssql": "^12.3.0",
     "@types/node": "^18.19.130",

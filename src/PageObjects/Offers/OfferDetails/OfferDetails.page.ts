@@ -86,7 +86,7 @@ export class OfferDetailsPage extends BasePage {
 
   /** The `Low price: …` / `High price: …` lines inside an optional block. */
   sectionPrices(section: OfferSection): Promise<string[]> {
-    return this.section(section).locator('h6').allInnerTexts();
+    return this.section(section).locator('h3').allInnerTexts();
   }
 
   // ----------------------------------------------------------------- actions

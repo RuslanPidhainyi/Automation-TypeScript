@@ -68,7 +68,7 @@ export class RegistrationPage extends BasePage {
     super(page);
 
     this.root = page.locator('form.register-form');
-    this.heading = this.root.locator('h2');
+    this.heading = this.root.locator('h1');
 
     this.genderMaleRadio = this.root.locator('input[type="radio"][value="male"]');
     this.genderFemaleRadio = this.root.locator('input[type="radio"][value="female"]');

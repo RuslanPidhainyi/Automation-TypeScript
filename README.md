@@ -40,6 +40,8 @@ only env file: every key the suite reads is listed there, the optional ones comm
 | **e2e** | Does the UI's data actually match what's in the database? | chromium, needs SQL Server access | `npm run test:e2e` |
 | **api** | Does every route let in exactly the right callers, and refuse a bad request properly? | seconds, no browser, needs only the API | `npm run test:api` |
 | **database** | Do the schema and the stored data keep their invariants? | seconds, no browser, needs only SQL Server | `npm run test:database` |
+| **accessibility** | Does axe-core find no violation on any screen, in any state a user can open? | ~1 min, chromium | `npm run test:a11y` |
+| **visual** | Do the screens that show no data still look the same? | seconds, chromium, **local only** | `npm run test:visual` |
 
 Health gates the rest: if it is red, the stack is down and the other layers cannot say anything
 useful. It needs no login state and creates no data.
@@ -51,9 +53,12 @@ and the authorization matrix reads each account's roles from the token it signs 
 
 ```bash
 npm test              # every layer, headless
+npm run test:all      # every layer in pipeline order, one merged HTML report opened at the end (see below)
 npm run test:health   # the gate - API contract + client availability
 npm run test:api      # authorization matrix + refused requests, straight against the API
 npm run test:database # schema + data invariants, straight against SQL Server
+npm run test:a11y     # axe-core over every screen and every state a user can open
+npm run test:visual   # screenshots against the committed baselines (local only)
 npm run test:headed   # run with a visible browser
 npm run test:ui       # interactive UI mode (see "UI mode & Playwright Inspector" below)
 npm run test:debug    # Playwright Inspector - headed, paused, step-through (see below)
@@ -76,10 +81,31 @@ On a slower machine or runner, stretch every timeout at once instead of editing 
 TIMEOUT_MULTIPLIER=2 npm test
 ```
 
+### Every layer, one report
+
+`npm run test:all` runs the layers in the order CI does, one `playwright test` per phase, and merges the phases
+into a single HTML report that opens when the run is over (`http://localhost:9323`, Ctrl+C to close it;
+`npm run report` opens it again later). If a report from an earlier run is still being served there, reload that tab -
+it reads `playwright-report/` from disk:
+
+```
+seed-users -> health -> api + database -> smoke, regression (3 browsers), e2e, accessibility, visual, Google Chrome
+```
+
+The order comes from the phases, not from the projects' `dependencies`, so a red phase does not hide the ones after
+it - except health: when it fails the stack is down and the remaining phases are skipped. `api` runs before the
+phases that promote and demote the test accounts. The pytest-style flags work here too. Locally nothing is retried,
+so the default `on-first-retry` records no trace - add `--tracing=retain-on-failure` to get one for every failed test:
+
+```bash
+npm run test:all
+npm run test:all -- -k "@smoke" --tracing=retain-on-failure
+```
+
 ### Running by tag
 
 Every test carries an `@<n>` ID tag plus exactly one layer tag (`@healthCheck` / `@smoke` /
-`@regression` / `@e2e`) — see `RulesForWritingTests.md` §6. Both come from named constants in
+`@regression` / `@e2e` / `@api` / `@database` / `@accessibility` / `@visual`) — see `RulesForWritingTests.md` §6. Both come from named constants in
 `specs/support/tags.ts` (`idTag(n)`, `LAYER_TAG.healthCheck` etc.), never hand-typed strings in the spec
 itself, but at the CLI they are matched as plain text with Playwright's own `-g`/`--grep` (there is no
 `--grep-invoke-tag` flag — that name doesn't exist in `@playwright/test`):
@@ -150,6 +176,39 @@ npm run test:health -- -v -k "token"
 node scripts/run-tests.js -k "token" --tracing=on
 ```
 
+### Visual baselines
+
+`npm run test:visual` compares the screens that show no data - login, registration, not-found and the empty add-post form -
+with the images in `specs/tests/visual/testScreens.spec.ts-snapshots/`. They are rendered on Windows, so the `visual`
+project runs locally only and CI never lists it. After an intended change to one of those screens:
+
+```bash
+npm run test:visual -- --update-snapshots   # then review the new images before committing them
+```
+
+## Reports
+
+Besides the HTML report, a run writes `reports/test-ids.json` and `reports/test-ids.csv` (`src/reporters/testIdReporter.ts`,
+git-ignored): one row per test and project, with its `[ID: n]`, layer and mutation tags, outcome, retries, duration and
+the product issues annotated on it. A test that caught a product defect carries it as an `issue` annotation
+(`specs/support/issues.ts`), which the HTML report shows on the test too. `npm run test:all` and CI write the files from
+the merged report.
+
+## Test agents
+
+`.claude/agents/` holds the three [Playwright Test Agents](https://playwright.dev/docs/test-agents) for Claude Code, and
+`.mcp.json` the MCP server they drive the browser through (`npx playwright run-test-mcp-server`, started with `PW_AGENTS=1`):
+
+| Agent | Does |
+| --- | --- |
+| `playwright-test-planner` | explores the running application from `test-plans/seed.spec.ts` (test_user_2 signed in, on /offers) and saves a Markdown test plan into `test-plans/` |
+| `playwright-test-generator` | turns a plan into specs that follow `.github/Skills/RulesForWritingTests.md` and `RulesForDescribingAPage.md` |
+| `playwright-test-healer` | debugs a failing spec; when the application itself is at fault it reports the defect instead of changing the test |
+
+The `agents` project that runs the seed exists only while `PW_AGENTS=1`, so no ordinary run picks it up. To regenerate
+the agent files run `PW_AGENTS=1 npx playwright init-agents --loop=claude --project=agents`, then restore the
+"Project rules" block at the top of each agent's instructions.
+
 ## Quality gate
 
 `npm run check` type-checks the project and runs ESLint (`eslint.config.mjs`) with zero warnings allowed:
@@ -164,9 +223,10 @@ What each rule enforces is in `.github/Skills/RulesForWritingTests.md` §10.
 src/PageObjects/       page objects, one per route (see .github/Skills/RulesForDescribingAPage.md)
 src/api/               the .NET API as typed controllers behind TravelApi
 src/constants/         API routes, SQL queries, timeouts, shared test data, toast texts
-src/helpers/           technical helpers: DB access, data factories, browser checks, .env loading
+src/helpers/           technical helpers: DB access, data factories, API stubs, time, browser checks, .env loading
 src/models/            API bodies (zod schemas) and database row shapes
-specs/support/         the suite's test with its fixtures, personas, cleanup, env/credentials, setup projects
+src/reporters/         testIdReporter - reports/test-ids.json and .csv
+specs/support/         the suite's test and expect (fixtures, matchers), personas, cleanup, product issues, env/credentials, setup projects
 specs/fixtures/        files the specs upload (reach them through FIXTURES)
 specs/tests/
 ├── healthCheck/       is the stack up?           (project: health)
@@ -174,8 +234,12 @@ specs/tests/
 ├── regression/        full behaviour             (projects: regression-chromium|firefox|webkit)
 ├── e2e/               UI ⇒ API ⇒ DB parity       (project: e2e)
 ├── api/               routes, roles, refusals    (project: api)
-└── database/          schema + data invariants   (project: database)
+├── database/          schema + data invariants   (project: database)
+├── accessibility/     axe-core on every screen   (project: accessibility)
+└── visual/            screenshot baselines       (project: visual, local only)
 playwright.config.ts   testDir, baseURL, timeouts, setup + one project per layer
+test-plans/            Markdown test plans and the seed of the Playwright Test Agents
+.claude/agents/        the planner, generator and healer agents; .mcp.json starts their MCP server
 eslint.config.mjs      the lint rules behind `npm run check`
 ```
 
@@ -209,18 +273,22 @@ added, and on demand (*Run workflow*, with a checkbox for regression).
 2. This repository and the application (`RuslanPidhainyi/EW-TravelApp-.Net8-Angular17`, branch `vars.APP_REF`,
    default `main`, into `app/`) are checked out; .NET 8, Node, the client, the suite and Chromium are installed,
    and `dotnet dev-certs https` gives the API a certificate.
-3. One `npx playwright test --project=smoke --project=e2e` does the rest. `START_STACK=1` makes the config's
+3. `npx playwright test --project=smoke --project=accessibility --project=e2e --shard=i/n` does the rest - one shard on a
+   push or a pull request, three at night and on demand, when regression joins. Playwright runs a project's
+   dependencies in every shard, so each runner walks the whole chain on its own stack. `START_STACK=1` makes the config's
    `webServer` start the API (`dotnet run`, HTTPS on 5001 - it migrates and seeds the empty database first) and the
    client (`ng serve --ssl=false`, HTTP on 4200). With `CI` set, every layer depends on the one below it, so the
    two projects pull in the whole chain and each layer runs only after the previous one passed:
 
    ```
-   seed-users -> health -> api + database -> setup -> smoke + e2e   (+ regression in three browsers at night)
+   seed-users -> health -> api + database -> setup -> smoke + accessibility + e2e   (+ regression in three browsers at night)
    ```
 
    `seed-users` (`specs/support/users.seed.ts`) registers `test_user_1`…`test_user_5` on the fresh database and
    grants their roles as the seeded admin. Where the accounts already exist it changes nothing.
-4. `playwright-report/`, `reports/junit.xml` and `test-results/` are uploaded as the `playwright-report` artifact.
+4. Every shard uploads a blob report (and, when it fails, its `test-results/`). The `report` job merges the blobs with
+   `merge-reports` into `playwright-report/`, `reports/junit.xml` and `reports/test-ids.*`, uploaded as the
+   `playwright-report` artifact.
 
 On the runner the suite reaches the database with `DB_DRIVER=tedious` and a SQL login; locally it keeps the native
 `msnodesqlv8` driver over the Named Pipe (`src/helpers/db/mssql.helper.ts`). `msnodesqlv8` is an optional

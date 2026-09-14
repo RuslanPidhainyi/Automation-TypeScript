@@ -1,8 +1,10 @@
-import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
+import { test as base, type BrowserContext, type Page } from '@playwright/test';
 import { TravelApi } from '../../src/api/TravelApi';
 import { MssqlClient } from '../../src/helpers/db/mssql.helper';
+import { ApiStub } from '../../src/helpers/network/apiStub.helper';
 import { STORAGE_STATE, type AuthRole } from './auth';
 import { Cleanup } from './cleanup';
+import { expect } from './matchers';
 import { PERSONAS, type Caller, type PersonaName } from './personas';
 import { signInThroughUi } from './signIn';
 
@@ -21,6 +23,8 @@ interface TestFixtures {
   pageAs: (persona: PersonaName) => Promise<Page>;
   /** Undoes, after the test, whatever the test registered - see `cleanup.ts`. */
   cleanup: Cleanup;
+  /** Answers the API's upload routes inside the test's `page`, so a UI-only check never reaches Cloudinary - see `apiStub.helper.ts`. */
+  apiStub: ApiStub;
 }
 
 interface WorkerFixtures {
@@ -77,6 +81,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const cleanup = new Cleanup(apiAs);
     await use(cleanup);
     await cleanup.run();
+  },
+
+  apiStub: async ({ page }, use) => {
+    await use(new ApiStub(page));
   },
 
   db: [

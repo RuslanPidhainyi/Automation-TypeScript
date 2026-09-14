@@ -1,4 +1,4 @@
-import { expect, idTag, LAYER_TAG, MUTATION_TAG, PROBES, probeTarget, test } from '../../support';
+import { expect, idTag, issuesOf, LAYER_TAG, MUTATION_TAG, PROBES, probeTarget, test } from '../../support';
 
 /**
  * API layer - who may call what.
@@ -77,7 +77,7 @@ test.describe(
     for (const { id, probe, caller, status } of matrix) {
       test(
         `[ID: ${id}] ${probe.label} answers ${status} to ${caller}`,
-        { tag: [idTag(id), LAYER_TAG.api, MUTATION_TAG.unmutation] },
+        { tag: [idTag(id), LAYER_TAG.api, MUTATION_TAG.unmutation], annotation: issuesOf(id) },
         async ({ apiAs }) => {
           const target = await probeTarget(apiAs);
 

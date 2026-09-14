@@ -1,8 +1,8 @@
 import { EditProfilePage, ProfilePage } from '../../../../src/PageObjects';
-import { TOAST } from '../../../../src/constants/messages';
+import { API_ERROR, TOAST } from '../../../../src/constants/messages';
 import { TIMEOUT } from '../../../../src/constants/timeouts';
 import { uniqueName } from '../../../../src/helpers/data/unique.helper';
-import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, test } from '../../../support';
+import { expect, FIXTURES, idTag, issuesOf, LAYER_TAG, MUTATION_TAG, test } from '../../../support';
 
 /**
  * Regression layer - `/member/edit-profile`. Both tests mutate the `member`
@@ -154,6 +154,44 @@ test.describe(
         await test.step('[Step 2][UI] Both its Main and delete buttons are disabled', async () => {
           await expect.soft(editProfile.photo(mainIndex).mainButton).toBeDisabled();
           await expect.soft(editProfile.photo(mainIndex).deleteButton).toBeDisabled();
+        });
+      },
+    );
+  },
+);
+
+/**
+ * Against the `apiStub` fixture: `users/add-photo` refused the way the API
+ * refuses a photo Cloudinary rejects. Nothing is uploaded or stored, so the
+ * block needs no snapshot. The photo editor shows the reason the API gave in an
+ * error toast (`onErrorItem`), empties the upload queue and adds no photo.
+ */
+test.describe(
+  'Tests verify the photo editor when the upload is refused, against a stubbed API',
+  { tag: [LAYER_TAG.regression, MUTATION_TAG.unmutation] },
+  () => {
+    test.use({ persona: 'member' });
+
+    test(
+      '[ID: 136] a photo Cloudinary rejects shows the reason, is not added to the profile and leaves the upload queue',
+      { tag: [idTag(136), LAYER_TAG.regression, MUTATION_TAG.unmutation], annotation: issuesOf(136) },
+      async ({ page, apiStub }) => {
+        await apiStub.addPhotoRejectsPhoto();
+        const editProfile = new EditProfilePage(page);
+
+        const before = await test.step('[Step 1][UI] Open /member/edit-profile and count the photos', async () => {
+          await editProfile.open();
+          return editProfile.photoCount();
+        });
+
+        await test.step('[Step 2][UI] Upload a photo the API refuses - the reason is shown, the queue empties, the photos stay', async () => {
+          await editProfile.uploader.dropFiles(FIXTURES.photo);
+          await expect(editProfile.uploader.queueRows).toHaveCount(1);
+
+          await editProfile.uploader.uploadAllButton.click();
+          await expect(editProfile.toast(API_ERROR.photoRejected)).toBeVisible();
+          await expect(editProfile.uploader.queueRows).toHaveCount(0);
+          await expect(editProfile.photos).toHaveCount(before);
         });
       },
     );

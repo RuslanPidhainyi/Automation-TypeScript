@@ -36,8 +36,8 @@ test.describe(
         const response = await api.account.registerRaw(buildRegisterDto({ password: 'Short8pw' }));
 
         expect(response.status()).toBe(400);
-        const problem = ValidationProblemSchema.parse(await response.json());
-        expect(problem.errors).toHaveProperty('Password');
+        await expect(response).toMatchSchema(ValidationProblemSchema);
+        expect((await response.json()).errors).toHaveProperty('Password');
       },
     );
 

@@ -95,7 +95,7 @@ straight-line calls *above or inside* a `test()` block, it is a helper, and help
 | Layer | Holds | Examples already there |
 | --- | --- | --- |
 | `specs/support/` | Spec-facing flows: orchestrates Page Objects, the API, env/credentials for a whole scenario. Barrel-exported through `index.ts`; specs import only from `'../../support'`. | `test`/`expect` with the suite fixtures (`fixtures.ts`, §11), `PERSONAS` (`personas.ts`), `Cleanup` (`cleanup.ts`), `PROBES`/`probeTarget` (`authorizationProbes.ts`), the `seed-users` project (`users.seed.ts`), `signInThroughUi`, `signInWithToken` (`signIn.ts`), `STORAGE_STATE`/`CREDENTIALS` (`auth.ts`), `TEST_USER_1`..`TEST_USER_5`/`FIXTURES` (`env.ts`) |
-| `src/helpers/` | Low-level technical utilities with no notion of "a test" or "a scenario": DB access, data generators, date/formatting utils, polling/retry utils. Called by `specs/support/` (or directly by a spec only when no support-level wrapper exists yet). | `dragAndDrop.helper.ts`, `browserHealth.helper.ts` (`collectLoadProblems`), `data/post.factory.ts` / `data/registration.factory.ts` / `data/unique.helper.ts` (§9), `data/posts.helper.ts`, `db/mssql.helper.ts` (`MssqlClient`, executing the strings from §2 — reads `DB_DRIVER` and the connection settings of that driver from `process.env` directly rather than importing `specs/support/env`, same reasoning as `browserHealth.helper.ts`'s `isOwnOrigin` taking `origin` as a parameter; specs reach it only through the `db` fixture), `jwt.helper.ts` |
+| `src/helpers/` | Low-level technical utilities with no notion of "a test" or "a scenario": DB access, data generators, date/formatting utils, polling/retry utils. Called by `specs/support/` (or directly by a spec only when no support-level wrapper exists yet). | `dragAndDrop.helper.ts`, `browserHealth.helper.ts` (`collectLoadProblems`), `network/apiStub.helper.ts` (`ApiStub`, `readMultipart` — specs reach the stubs through the `apiStub` fixture, §11), `time.helper.ts` (`shiftTime`, for `page.clock`, §13), `data/post.factory.ts` / `data/registration.factory.ts` / `data/unique.helper.ts` (§9), `data/posts.helper.ts`, `db/mssql.helper.ts` (`MssqlClient`, executing the strings from §2 — reads `DB_DRIVER` and the connection settings of that driver from `process.env` directly rather than importing `specs/support/env`, same reasoning as `browserHealth.helper.ts`'s `isOwnOrigin` taking `origin` as a parameter; specs reach it only through the `db` fixture), `jwt.helper.ts` |
 | `src/api/` | The .NET API as typed controllers, one per `API/Controllers/*.cs`. Routes come from `src/constants/endpoints.ts`; every typed response is validated against its zod schema, and a `xxxRaw()` variant returns the bare `APIResponse` when the status itself is what a test checks. | `TravelApi` - `api.posts.list()`, `api.messages.send(...)`, `api.admin.editRoles(...)` - reached through the `api` / `apiAs` fixtures (§11) |
 
 ```ts
@@ -218,6 +218,8 @@ Three tags, every time, each pulled from its own constant:
   | `specs/tests/e2e/` | `LAYER_TAG.e2e` | `@e2e` | Does the UI's data actually match what's persisted in the database? |
   | `specs/tests/api/` | `LAYER_TAG.api` | `@api` | Does every route let in exactly the right callers, and refuse a bad request the way it should? |
   | `specs/tests/database/` | `LAYER_TAG.database` | `@database` | Do the schema and the stored data keep the invariants the application relies on? |
+  | `specs/tests/accessibility/` | `LAYER_TAG.accessibility` | `@accessibility` | Does axe-core find no violation on the screen, in the state a user opened? |
+  | `specs/tests/visual/` | `LAYER_TAG.visual` | `@visual` | Does a screen that shows no data still look like its committed baseline? (local only) |
 
   The tag is redundant with the folder (Playwright's `testDir` per project already isolates each layer —
   see `playwright.config.ts`), and that is intentional: it lets a run filter by layer *across* folders
@@ -395,6 +397,7 @@ of building it:
 | `apiAs(persona)` | a `TravelApi` signed in as any persona from `PERSONAS` — one sign-in per persona per test; `apiAs('anonymous')` sends no token | authenticating and passing tokens around |
 | `pageAs(persona)` | another, independent browser session signed in through the login form, closed after the test | `browser.newContext(...)` + `signInThroughUi` + `close()` |
 | `cleanup` | undoes what the test registered: `cleanup.post(owner, title)`, `cleanup.like(liker, postId)`, `cleanup.messages(a, b, contents)`, `await cleanup.profile(owner)`, `await cleanup.roles(target)` | `test.afterEach` hooks |
+| `apiStub` | the upload routes answered inside the test's `page`, before the request leaves the browser: `await apiStub.addPostSucceeds()`, `addPostRejectsPhoto()`, `addPhotoRejectsPhoto()`. Each returns `{ request }`, which resolves with the request the stub answered; `readMultipart(request)` (`src/helpers/network/apiStub.helper.ts`) reads its body | `page.route(...)` written in the spec |
 | `db` (worker) | one SQL Server pool per worker, closed when the worker finishes | opening a connection in the spec |
 
 ```ts
@@ -418,6 +421,11 @@ test('[ID: n] ...', { tag: [...] }, async ({ page, apiAs, cleanup }) => {
   never types an API route — controllers take their routes from `src/constants/endpoints.ts`.
 - Prefer the parsed calls (`api.posts.list()`): when the API contract changes they fail with every mismatching
   field listed. Reach for a `xxxRaw()` call only when the status code itself is what the test checks.
+- `apiStub` answers a route in place of the API, so nothing it answers is stored. Use it only where the test checks
+  what the client sends or shows and never reads the result back: a refusal the real stack cannot produce on demand
+  (Cloudinary rejecting a photo), or the contents of a request (`[ID: 134]`–`[ID: 136]`). Smoke, e2e, the api layer and
+  any test that finds the post or photo again afterwards stay on the real API. A stubbed test is `@unmutation` and
+  registers no cleanup.
 
 ---
 
@@ -468,6 +476,44 @@ bodies.
 | `await expect.poll(() => thread.messageTexts()).toContain(text)` | `await expect(thread.messageWithText(text)).toBeVisible()` |
 
 ---
+
+## 13. Custom matchers, accessibility, visual checks, the clock and product issues
+
+**Matchers.** The `expect` from `specs/support` carries two matchers of the suite's own (`specs/support/matchers.ts`). A new
+matcher goes into that file, never into a spec.
+
+| Matcher | Checks | Use it for |
+| --- | --- | --- |
+| `await expect(response).toMatchSchema(Schema)` | the JSON body satisfies a zod schema from `src/models/`, listing every mismatching field when it does not | the body of a refused request (`ValidationProblemSchema`, `ApiExceptionSchema`) - a 2xx body is validated by the controller call already |
+| `await expect(page).toHaveNoA11yViolations()` | axe-core finds no violation: every rule it enables by default, WCAG 2.x A/AA plus best practices; the full axe results are attached on failure | the `accessibility` layer |
+
+**Accessibility** (`specs/tests/accessibility/`, `@accessibility`):
+
+- One test per screen and per state a user can open on it - a menu, a tab, a dialog, a date picker, a form with its
+  optional sections open, a queued upload.
+- Scan a settled screen only: wait for its data with a hard `expect` (the first card, the first user row) and call
+  `waitForSpinnerToDisappear()` - axe reports what is on the page at that moment.
+- Never disable an axe rule or exclude an element to make a test pass. A violation is a product defect: fix it in
+  `EW-TravelApp-.Net8-Angular17` and keep the test. When the fix changes the markup, the page object follows it.
+
+**Visual** (`specs/tests/visual/`, `@visual`, local only):
+
+- Only screens whose content does not depend on data - login, registration, not-found, the empty add-post form - and
+  even there mask what is data (`mask: [addOffer.navAvatar]`).
+- The baselines are rendered on Windows and committed next to the spec; CI never lists the project. After an intended
+  change run `npm run test:visual -- --update-snapshots` and review the new images before committing them.
+
+**Time** (`page.clock`):
+
+- Anything rendered relative to "now" (the `timeago` pipe) is pinned with `page.clock.setFixedTime(...)` before the page
+  loads, a known distance after a timestamp the test reads from the API (`shiftTime`) - never at a hard-coded date.
+- Read that timestamp from an account nothing else touches while the test runs: a seeded member, whose `lastActive`
+  only moves when that member calls the API.
+
+**Product issues.** A test that caught a product defect carries it as an annotation - `{ tag: [...], annotation: issuesOf(n) }` -
+with the defect registered once in `specs/support/issues.ts` (`PRODUCT_ISSUE`, `ISSUES_BY_ID`): a summary that says whether
+it is fixed or still open, and a link to the fix. The HTML report shows it on the test, and `reports/test-ids.json` / `.csv`
+(`src/reporters/testIdReporter.ts`) list every test by ID with its outcome and issues.
 
 ## Anatomy of a compliant spec file
 
@@ -533,3 +579,6 @@ land on `/offers`, and the row exists.
     `pageAs`, and every change is registered with `cleanup` before it is made (§11).
 12. Regression and e2e tests are split into `[Step N][Layer]` steps; independent checks are `expect.soft`
     after the hard preconditions; browser state is asserted web-first, on locators (§12).
+13. An accessibility test scans a settled screen; a visual test covers a data-free screen with the data masked; time
+    comes from `page.clock`, relative to an API timestamp; a product defect the test caught is registered in
+    `specs/support/issues.ts` and annotated with `issuesOf(n)` (§13).

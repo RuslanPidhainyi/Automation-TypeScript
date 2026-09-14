@@ -23,8 +23,8 @@ test.describe(
         // `roles` is a non-nullable `string`, so `[ApiController]` refuses an empty one before `EditRoles`
         // runs - the action's own "you must select at least one role" is never reached.
         expect(response.status()).toBe(400);
-        const problem = ValidationProblemSchema.parse(await response.json());
-        expect(problem.errors).toHaveProperty('roles');
+        await expect(response).toMatchSchema(ValidationProblemSchema);
+        expect((await response.json()).errors).toHaveProperty('roles');
       },
     );
 

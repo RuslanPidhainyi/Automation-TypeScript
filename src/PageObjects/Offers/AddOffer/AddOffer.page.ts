@@ -34,7 +34,7 @@ export class AddOfferPage extends BasePage {
     super(page);
 
     this.root = page.locator('app-add-offer');
-    this.heading = this.root.locator('h3').first();
+    this.heading = this.root.locator('h1');
     this.uploader = fileUploader(this.root.getByTestId('add-offer-photo'));
     this.form = postForm(this.root.getByTestId('post-form'));
     this.submitButton = this.form.submitButton;

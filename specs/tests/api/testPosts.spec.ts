@@ -1,7 +1,7 @@
 import { API_ERROR } from '../../../src/constants/messages';
 import { MISSING_ID } from '../../../src/constants/testData';
 import { buildPostDto } from '../../../src/helpers/data/post.factory';
-import { expect, FIXTURES, idTag, LAYER_TAG, MUTATION_TAG, test } from '../../support';
+import { expect, FIXTURES, idTag, issuesOf, LAYER_TAG, MUTATION_TAG, test } from '../../support';
 
 /**
  * API layer - `PostsController`: a post can be read only while it exists, and
@@ -63,7 +63,7 @@ test.describe(
 
     test(
       '[ID: 118] test_user_3 editing a post of test_user_4 answers 403 and the post keeps its description',
-      { tag: [idTag(118), LAYER_TAG.api, MUTATION_TAG.mutation] },
+      { tag: [idTag(118), LAYER_TAG.api, MUTATION_TAG.mutation], annotation: issuesOf(118) },
       async ({ apiAs, cleanup }) => {
         const post = buildPostDto();
         cleanup.post('admin', post.title);

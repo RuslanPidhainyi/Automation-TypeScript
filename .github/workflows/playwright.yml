@@ -1,8 +1,10 @@
 name: Playwright Tests
 
-# The whole stack on the runner: SQL Server as a service container, the API and the client started by
-# playwright.config.ts's webServer (START_STACK=1). One `playwright test` run walks the layers in pipeline order -
-# seed-users -> health -> api + database -> setup -> smoke + e2e - and at night regression joins in three browsers.
+# The whole stack on every runner: SQL Server as a service container, the API and the client started by
+# playwright.config.ts's webServer (START_STACK=1). Every shard walks the layers in pipeline order -
+# seed-users -> health -> api + database -> setup -> its share of smoke, accessibility and e2e, plus regression in
+# three browsers at night - because Playwright runs a project's dependencies in every shard. The shards write blob
+# reports and the `report` job merges them into one HTML report, one JUnit file and reports/test-ids.*.
 # The secrets and variables this needs are listed in README.md, "CI".
 on:
   push:
@@ -23,8 +25,17 @@ concurrency:
 
 jobs:
   test:
+    name: shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # A run with regression is split across three runners. A push or a pull request (smoke, accessibility and
+        # e2e) is short enough that three stacks would cost more than they save.
+        shardIndex: ${{ fromJSON((github.event_name == 'schedule' || inputs.regression) && '[1, 2, 3]' || '[1]') }}
+        shardTotal: ${{ fromJSON((github.event_name == 'schedule' || inputs.regression) && '[3]' || '[1]') }}
 
     services:
       mssql:
@@ -120,22 +131,65 @@ jobs:
         if: env.RUN_REGRESSION == 'true'
         run: npx playwright install --with-deps firefox webkit
 
-      - name: seed-users, health, api, database, setup, smoke, e2e
+      - name: seed-users, health, api, database, setup, smoke, accessibility, e2e
         if: env.RUN_REGRESSION != 'true'
-        run: npx playwright test --project=smoke --project=e2e
+        run: >-
+          npx playwright test --project=smoke --project=accessibility --project=e2e
+          --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --reporter=list,blob
 
-      - name: seed-users, health, api, database, setup, smoke, e2e, regression in three browsers
+      - name: seed-users, health, api, database, setup, smoke, accessibility, e2e, regression in three browsers
         if: env.RUN_REGRESSION == 'true'
         run: >-
-          npx playwright test --project=smoke --project=e2e
+          npx playwright test --project=smoke --project=accessibility --project=e2e
           --project=regression-chromium --project=regression-firefox --project=regression-webkit
+          --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --reporter=list,blob
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
+        with:
+          name: blob-report-${{ matrix.shardIndex }}
+          path: blob-report/
+          retention-days: 1
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: test-results-${{ matrix.shardIndex }}
+          path: test-results/
+          retention-days: 7
+
+  report:
+    name: merge the shard reports
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install the suite
+        run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge the shards into HTML, JUnit and reports/test-ids.*
+        run: npx playwright merge-reports --reporter=html,junit,./src/reporters/testIdReporter.ts ./all-blob-reports
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: reports/junit.xml
+
+      - uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: |
             playwright-report/
             reports/
-            test-results/
           retention-days: 30

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "playwright-test": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "playwright",
+        "run-test-mcp-server"
+      ],
+      "env": {
+        "PW_AGENTS": "1"
+      }
+    }
+  }
+}
