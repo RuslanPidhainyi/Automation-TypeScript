@@ -4,7 +4,8 @@ name: Playwright Tests
 # playwright.config.ts's webServer (START_STACK=1). Every shard walks the layers in pipeline order -
 # seed-users -> health -> api + database -> setup -> its share of smoke, accessibility and e2e, plus regression in
 # three browsers at night - because Playwright runs a project's dependencies in every shard. The shards write blob
-# reports and the `report` job merges them into one HTML report, one JUnit file and reports/test-ids.*.
+# reports and the `report` job merges them into one HTML report, one JUnit file, reports/test-ids.* and
+# reports/custom-report/.
 # The secrets and variables this needs are listed in README.md, "CI".
 on:
   push:
@@ -42,7 +43,10 @@ jobs:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: 'Y'
-          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+          # The database lives only as long as the job and is reachable only from the runner, so its password is not
+          # a secret. SQL Server refuses to start without one that meets its policy (8+ characters, three of: upper
+          # case, lower case, digit, symbol). The same value is in DB_PASSWORD and Data__Connection below.
+          MSSQL_SA_PASSWORD: TravelApp_CI_2026
         ports:
           - 1433:1433
         # The API migrates and seeds on startup and gives up on a database that is not answering yet.
@@ -68,37 +72,48 @@ jobs:
       DB_PORT: '1433'
       DB_NAME: TravelApp
       DB_USER: sa
-      DB_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
+      DB_PASSWORD: TravelApp_CI_2026
 
-      # The API's configuration - appsettings*.json are not in the application repository.
-      Data__Connection: Server=localhost,1433;Database=TravelApp;User Id=sa;Password=${{ secrets.MSSQL_SA_PASSWORD }};TrustServerCertificate=True
-      TokenKey: ${{ secrets.TOKEN_KEY }}
+      # The API's configuration - appsettings*.json are not in the application repository. TokenKey is generated for
+      # every run by the step "Generate the API's TokenKey".
+      Data__Connection: Server=localhost,1433;Database=TravelApp;User Id=sa;Password=TravelApp_CI_2026;TrustServerCertificate=True
       CloudinarySettings__CloudName: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CloudinarySettings__ApiKey: ${{ secrets.CLOUDINARY_API_KEY }}
       CloudinarySettings__ApiSecret: ${{ secrets.CLOUDINARY_API_SECRET }}
 
-      # Accounts. seed-users registers the five test accounts and grants their roles as the seeded admin.
-      ADMIN_USER: ${{ secrets.ADMIN_USER }}
-      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-      TEST_USER_1: ${{ secrets.TEST_USER_1 }}
-      TEST_PASSWORD_1: ${{ secrets.TEST_PASSWORD_1 }}
-      TEST_USER_2: ${{ secrets.TEST_USER_2 }}
-      TEST_PASSWORD_2: ${{ secrets.TEST_PASSWORD_2 }}
-      TEST_USER_3: ${{ secrets.TEST_USER_3 }}
-      TEST_PASSWORD_3: ${{ secrets.TEST_PASSWORD_3 }}
-      TEST_USER_4: ${{ secrets.TEST_USER_4 }}
-      TEST_PASSWORD_4: ${{ secrets.TEST_PASSWORD_4 }}
-      TEST_USER_5: ${{ secrets.TEST_USER_5 }}
-      TEST_PASSWORD_5: ${{ secrets.TEST_PASSWORD_5 }}
+      # Accounts on the runner's fresh database. ADMIN_* is the admin API/Data/Seed.cs creates; seed-users registers
+      # the five test accounts with these passwords (9-21 characters with an upper-case letter, a lower-case letter
+      # and a digit, or account/register refuses them) and grants their roles as that admin.
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: Admin2024
+      TEST_USER_1: test_user_1
+      TEST_PASSWORD_1: CiTestUser1Pass
+      TEST_USER_2: test_user_2
+      TEST_PASSWORD_2: CiTestUser2Pass
+      TEST_USER_3: test_user_3
+      TEST_PASSWORD_3: CiTestUser3Pass
+      TEST_USER_4: test_user_4
+      TEST_PASSWORD_4: CiTestUser4Pass
+      TEST_USER_5: test_user_5
+      TEST_PASSWORD_5: CiTestUser5Pass
 
     steps:
+      # Photo uploads go to a real Cloudinary account, and setup uploads one on every fresh database - without these
+      # every layer after setup would be skipped, ten minutes into the run.
+      - name: Check the Cloudinary secrets
+        if: env.CloudinarySettings__CloudName == '' || env.CloudinarySettings__ApiKey == '' || env.CloudinarySettings__ApiSecret == ''
+        run: |
+          echo "::error::CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET must be set - README.md, \"Secrets and variables\""
+          exit 1
+
       - uses: actions/checkout@v4
 
       - name: Check out the application
         uses: actions/checkout@v4
         with:
           repository: RuslanPidhainyi/EW-TravelApp-.Net8-Angular17
-          ref: ${{ vars.APP_REF || 'main' }}
+          # EW-021 holds the data-testid hooks and the product fixes the suite expects; main does not have them yet.
+          ref: ${{ vars.APP_REF || 'EW-021' }}
           path: app
           token: ${{ secrets.APP_REPO_TOKEN || github.token }}
 
@@ -116,6 +131,13 @@ jobs:
 
       - name: Give Kestrel an HTTPS development certificate
         run: dotnet dev-certs https
+
+      # Signs only the tokens of this run's throwaway API; TokenService wants at least 64 characters.
+      - name: Generate the API's TokenKey
+        run: |
+          token_key="$(openssl rand -base64 64 | tr -d '\n')"
+          echo "::add-mask::$token_key"
+          echo "TokenKey=$token_key" >> "$GITHUB_ENV"
 
       - name: Install the client
         working-directory: app/Client
@@ -181,8 +203,11 @@ jobs:
           pattern: blob-report-*
           merge-multiple: true
 
-      - name: Merge the shards into HTML, JUnit and reports/test-ids.*
-        run: npx playwright merge-reports --reporter=html,junit,./src/reporters/testIdReporter.ts ./all-blob-reports
+      - name: Merge the shards into HTML, JUnit, reports/test-ids.* and reports/custom-report/
+        run: >-
+          npx playwright merge-reports
+          --reporter=html,junit,./src/reporters/testIdReporter.ts,./src/reporters/customReport/customReporter.ts
+          ./all-blob-reports
         env:
           PLAYWRIGHT_JUNIT_OUTPUT_FILE: reports/junit.xml
 

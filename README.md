@@ -839,7 +839,7 @@ rules" block at the top of each agent's instructions.
 
 1. SQL Server 2022 starts as a service container; the job waits until it answers.
 2. This repository and the application (`RuslanPidhainyi/EW-TravelApp-.Net8-Angular17`, branch `vars.APP_REF`, default
-   `main`, into `app/`) are checked out; .NET 8, Node, the client, the suite and Chromium are installed, and
+   `EW-021`, into `app/`) are checked out; .NET 8, Node, the client, the suite and Chromium are installed, and
    `dotnet dev-certs https` gives the API a certificate.
 3. `npx playwright test --project=smoke --project=accessibility --project=e2e --shard=i/n` does the rest: one shard on a
    push or a pull request, three at night and on demand, when regression joins. Playwright runs a project's
@@ -857,8 +857,8 @@ On the runner the suite reaches the database with `DB_DRIVER=tedious` and a SQL 
 so `npm ci` succeeds on a machine that cannot build it.
 
 The application code the workflow checks out must contain what the suite expects (the `data-testid` hooks and the
-`LikesController` / `PostsController.UpdatePost` fixes), so merge those into `main` (or point `APP_REF` at their
-branch) before relying on a green run.
+fixes `specs/support/issues.ts` points at). Today only `EW-021` does, so it is the default `APP_REF`; once it is merged
+into `main`, set the `APP_REF` variable to `main`.
 
 ### Secrets and variables
 
@@ -866,16 +866,17 @@ branch) before relying on a green run.
 
 | Secret | Value |
 | --- | --- |
-| `MSSQL_SA_PASSWORD` | any password SQL Server accepts (8+ characters, three of: upper case, lower case, digit, symbol); the container is created with it |
-| `TOKEN_KEY` | the API's `TokenKey`, at least 64 characters (`TokenService`) |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | the Cloudinary account photo uploads go to |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | the seeded admin: `admin` and the password `API/Data/Seed.cs` creates it with |
-| `TEST_USER_1`…`TEST_USER_5`, `TEST_PASSWORD_1`…`TEST_PASSWORD_5` | the test accounts, as in `.env`; passwords 9-21 characters with an upper-case letter, a lower-case letter and a digit, or `account/register` refuses them |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | the Cloudinary account photo uploads go to (`CloudinarySettings` in the API's `appsettings.json`); without them the job stops at its first step |
 | `APP_REPO_TOKEN` | optional, only if the application repository is private |
 
 | Variable | Value |
 | --- | --- |
-| `APP_REF` | optional: the application branch to test, `main` by default |
+| `APP_REF` | optional: the application branch to test, `EW-021` by default |
+
+Everything else lives and dies with the runner, so the workflow spells it out instead of reading secrets: the SQL
+Server `sa` password (`TravelApp_CI_2026`), the seeded `admin` (`API/Data/Seed.cs`), the test accounts
+`test_user_1`…`test_user_5` with CI-only passwords (`seed-users` registers them on the fresh database), and the API's
+`TokenKey`, generated for every run.
 
 Every run on a fresh database uploads one photo to Cloudinary for `test_user_2` (`specs/support/data.setup.ts`) and
 does not delete it; the database it belonged to is gone when the job ends.
